@@ -36,7 +36,7 @@ def scrape_nra(exisiting_records):
             try:
                 sections = result.select('.col-sm-12')
                 link = short_url + sections[2].select('div')[1].select('p')[1].select('a')[0]['href'].strip()
-                page_id = re.search('.*#item(.*)', link).group(1)
+                page_id = int(re.search('.*#item(.*)', link).group(1))
 
                 if page_id in existing_page_ids:
                     continue
@@ -77,12 +77,12 @@ def format_dates(records):
 
 def main():
     records = pd.read_csv('nap_rec.csv', sep='\t') if os.path.exists('nap_rec.csv') else pd.DataFrame({'page_id':[]})
-    rec, failed = scrape_nra(records)
-    new_page_ids = set(set(rec.page_id.values).difference(records.page_id.values))
+    new_rec, failed = scrape_nra(records)
+    new_page_ids = set(set(new_rec['page_id'].astype(int).values).difference(records['page_id'].astype(int).values))
     # 'page_id', 'link', 'related_page_ids', 'period_start', 'period_end', 'announcement', 'published', 'category',
     # 'ideal_part', 'desc', 'quantity', 'already_held', 'deposit', 'price', 'responsible_person', 'department',
     # 'region', 'municipality', 'place', 'address', 'type', 'area', 'photo_links', 'lat', 'lon'
-    new_links = rec[rec['page_id'].isin(new_page_ids)]['link']
+    new_links = new_rec[new_rec['page_id'].astype(int).isin(new_page_ids)]['link']
     records_details = npc.main(new_links)
     records_details = pd.concat([records_details, records], sort=True)
     records_details.to_csv('nap_rec.csv', sep='\t', index=False)
