@@ -1,10 +1,10 @@
-Run
+## Run
 > virtualenv tenders
 
-Then activate the env:
+## Then activate the env:
 > tenders\Scrips\activate
 
-Install dependencies
+## Install dependencies
 > pip install -r requirements.txt
 
 ## To scrape https://sales.bcpea.org/ run. Output is saved as .csv locally
