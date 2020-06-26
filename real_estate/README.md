@@ -1,6 +1,9 @@
 Run
 > virtualenv real_estate
 
+Then activate the env:
+> real_estate\Scrips\activate
+
 Install dependencies
 > pip install -r requirements.txt
 
