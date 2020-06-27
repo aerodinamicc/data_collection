@@ -1,6 +1,8 @@
 #
 real_estate/connection.txt
 real_estate/output/
+real_estate/shp/
+real_estate/*.tsv
 real_estate/.ipynb_checkpoints/
 real_estate/__pycache__/
 real_estate_tenders/*.csv
