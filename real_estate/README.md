@@ -14,7 +14,8 @@ pipwin install fiona
 pipwin install pyproj
 pipwin install six
 pipwin install rtree
-pipwin install geopandas```
+pipwin install geopandas
+```
 
 ## To scrape holmes.bg run
 ```python .\holmes.bg.py -current_date 0626```
