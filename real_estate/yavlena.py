@@ -6,6 +6,10 @@ import re
 from tqdm import tqdm
 from helpers import clean_text, replace_month_with_digit, months
 import time
+import selenium
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 
 
 base_url = 'https://yavlena.bg'
@@ -16,11 +20,12 @@ offers_file = "yavlena.bg_"
 def get_neighbourhood_links():
     rq = request.get(base_search_url)
     page = bs4.BeautifulSoup(rq, 'html')
-    neighbourhoods = page.findAll('input',
+    neighbourhoods  = page.findAll('input',
                                   attrs={'name': 'quarters',
                                         'type':'checkbox'})
+
     #tuple(neighbourhood_name, link)
-    neighbourhoods = [(n['data-quarters'], base_search_url.format(n['value'])) for n in neighbourhoods]
+    neighbourhoods = [(n['data-quarter'], base_search_url.format(n['value'])) for n in neighbourhoods]
     
     return neighbourhoods
 
@@ -42,10 +47,20 @@ def crawlLinks(neighbourhoods):
     for nbhd, nbhd_link in tqdm(neighbourhoods):
         browser.get(nbhd_link)
         time.sleep(10)
-        page = bs4.BeautifulSoup(browser.page_source, 'html') #, from_encoding="utf-8")
-        load_more = True
+        page = bs4.BeautifulSoup(browser.page_source, 'html')
+        load_more = False
         
         while load_more:
+            # 1
+            button = WebDriverWait(browser, 20).until(EC.element_to_be_clickable((By.ID, "btnNew")))
+            button.click()
+
+            # 2
+            browser.find_element_by_xpath("//div[@class='vhodOptions']//input[@value=2]").click()
+
+            # 3
+            browser.execute_script()
+
             # click Зареди Още
             time.sleep(2)
             page = bs4.BeautifulSoup(browser.page_source, 'html')
@@ -55,40 +70,43 @@ def crawlLinks(neighbourhoods):
         boxes = page.findAll('article', attrs={'class': 'card-list-item'})
 
         for b in boxes:
-            price = b.select('.price-label')[0].text.replace('&nbsp;', '') if len(b.select('.price-label')) > 0 else 0
-            desc = b.select('.full-text')[0].text if len(b.select('.full-text')) > 0 else 0
-            tbody = b.findAll('tbody')[0]
-            type_ = tbody.findAll('tr')[0].findAll('td')[1].h3.text
-            link = tbody.findAll('tr')[0].findAll('td')[1].h3.a['href']
-            lat = tbody.findAll('tr')[1].findAll('td')[0].a['data-map-lat']
-            lng = tbody.findAll('tr')[1].findAll('td')[0].a['data-map-lng']
-            area = tbody.findAll('tr')[2].findAll('td')[0].a.text
+            try:
+                price = b.select('.price-label')[0].text.replace('&nbsp;', '').replace('\xa0', '') if len(b.select('.price-label')) > 0 else 0
+                desc = b.select('.full-text')[0].text if len(b.select('.full-text')) > 0 else 0
+                tbody = b.findAll('tbody')[0]
+                is_selling = tbody.findAll('tr')[0].findAll('td')[0].h3.text
+                type_ = tbody.findAll('tr')[0].findAll('td')[1].h3.text
+                link = tbody.findAll('tr')[0].findAll('td')[1].h3.a['href']
+                lat = tbody.findAll('tr')[1].findAll('td')[0].a['data-map-lat']
+                lng = tbody.findAll('tr')[1].findAll('td')[0].a['data-map-lng']
+                area = tbody.findAll('tr')[2].findAll('td')[0].text.replace('кв.м.', '').strip()
 
-            extras = {}
-            for ex in b.select('.extras')[0].findall('div'):
-                spans = ex.findall('span')
+                extras = {}
+                exs = b.select('.extras')[0]
+                exs = exs.select('div')
+                for ex in exs:
+                    spans = ex.select('span')
 
-                if len(spans) == 1:
-                    extras[spans[0]['title']] = 0
-                elif len(spans) == 2:
-                    extras[spans[1]['title']] = spans[0].text
+                    if len(spans) == 1:
+                        extras[spans[0]['title']] = 0
+                    elif len(spans) == 2:
+                        extras[spans[1]['title']] = spans[0].text
 
-            current_box = pd.DataFrame(data={'link': link,
-                                               'type': type_,
-                                               'extras': extras,
-                                               'place': nbhd,
-                                               'lon': lng,
-                                               'lat': lat,
-                                               'price': price,
-                                               'area': area,
-                                               'description': desc)
+                offers = offers.append({'link': link,
+                                        'is_selling': is_selling,
+                                        'type': type_,
+                                        'extras': str(extras),
+                                        'place': nbhd,
+                                        'lon': lng,
+                                        'lat': lat,
+                                        'price': price,
+                                        'area': area,
+                                        'description': desc}, ignore_index=True)
 
-            offers = pd.concat([offers, current_box], ignore_index=True)
-
-        except Exception as e:
-            print(e)
-            continue
-
+            except Exception as e:
+                print(e)
+                continue
+    
     browser.close()
 
     return offers
