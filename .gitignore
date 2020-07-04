@@ -7,6 +7,7 @@ real_estate/.ipynb_checkpoints/
 real_estate/__pycache__/
 real_estate_tenders/*.csv
 real_estate_tenders/__pycache__/
+*/.vscode/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
