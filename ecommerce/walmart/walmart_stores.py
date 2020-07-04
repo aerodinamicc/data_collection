@@ -8,21 +8,18 @@ import geopandas as gpd
 from shapely.geometry import Point, Polygon
 
 
-#abspath = os.path.abspath(__file__)
-#dname = os.path.dirname(abspath)
-#os.chdir(dname)
-folder_name = 'E:/loc/walmart/'
-json_folder = 'json_files/'
-output_folder = 'walmart_output/'
-
-
-def scrape_stores():
+def scrape_stores(output_folder):
+    if not os.path.exists(output_folder):
+        os.mkdir(output_folder)
+        
+    os.chdir(output_folder)
     # we don't repeat scraping for the same store
-    files_saved = os.listdir(folder_name + json_folder)
+    files_saved = os.listdir(output_folder)
     stores_saved = set()
 
     for f in files_saved:
-        stores_saved.add(int(re.search('^(\d+)', f).group(0)))
+        if f.endswith('.txt'):
+            stores_saved.add(int(re.search('^(\d+)', f).group(0)))
 
     stores_saved = range(1, max(stores_saved))
     store_range = set(range(1, 10000))
@@ -51,7 +48,7 @@ def scrape_stores():
             e = page_text.find(end_phrase, st) - 1
             js = page_text[st:e]
 
-            with open(folder_name + json_folder + str(store_id) + '.txt', "w") as text_file:
+            with open(output_folder+ str(store_id) + '.txt', "w") as text_file:
                 file = js.replace('\x81', '').replace('\x90', '').replace('\x9d', '').replace('\x8d', '')
                 json.loads(js)
                 text_file.write(file)
@@ -71,10 +68,14 @@ def safe_check_key_in_dict(dict, keys):
     return value
 
 
-def clean_store_info():
+def clean_store_info(output_folder):
     stores = pd.DataFrame()
-
-    os.chdir(folder_name + json_folder)
+    
+    if not os.path.exists(output_folder):
+        os.mkdir(output_folder)
+        
+    os.chdir(output_folder)
+    
     files_saved = os.listdir()
     for file in tqdm(files_saved):
         with open(file, 'r') as content_file:
@@ -116,7 +117,10 @@ def clean_store_info():
 
 
 def save_files(stores):
-    os.chdir(folder_name + output_folder)
+    if os.path.exists(output_folder)
+        os.mkdir(output_folder)
+
+    os.chdir(output_folder)
     stores.to_csv('walmart_store.tsv', index=False, sep='\t')
 
     primary_services_exploded = stores.explode('primary_services')
@@ -155,18 +159,22 @@ def create_buffers(df, buffer_in_meters):
     buffers.rename(columns={0: 'geometry'}, inplace=True)
 
     buffers = pd.concat([buffers, df[['store_id']]], axis=1)
-    buffers.to_file(folder_name + output_folder + 'walmart_stores_{}km_buffer.shp'.format(round(buffer_in_meters/1000)))
+    buffers.to_file(output_folder + 'shp/' + 'walmart_stores_{}km_buffer.shp'.format(round(buffer_in_meters/1000)))
 
 
-def main():
-    # scrape_stores()
-    stores = clean_store_info()
-    save_files(stores)
+def main(output_folder):
+    scrape_stores(output_folder)
+    stores = clean_store_info(output_folder)
+    save_files(stores, output_folder)
     convert_to_geodf(stores, 'lon', 'lat')
 
 
 if __name__ == '__main__':
-    main()
+	parser = argparse.ArgumentParser()
+	parser.add_argument('-output_folder', required=True, help="/?")
+	parsed = parser.parse_args()
+	output_folder = parsed.output_folder + '/' 
+    main(output_folder)
 
 
 
