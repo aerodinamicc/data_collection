@@ -7,6 +7,9 @@ real_estate/.ipynb_checkpoints/
 real_estate/__pycache__/
 real_estate_tenders/*.csv
 real_estate_tenders/__pycache__/
+/ecommerce/google_maps_poi_filter/*.csv
+/ecommerce/google_maps_poi_filter/*.txt
+/ecommerce/google_maps_poi_filter/*.tsv
 */.vscode/
 
 # Byte-compiled / optimized / DLL files
