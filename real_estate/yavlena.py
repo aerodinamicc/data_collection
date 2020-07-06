@@ -63,7 +63,7 @@ def crawlLinks(neighbourhoods):
         for b in boxes:
             try:
                 price = b.select('.price-label')[0].text.replace('&nbsp;', '').replace('\xa0', '') if len(b.select('.price-label')) > 0 else 0
-                desc = b.select('.full-text')[0].text if len(b.select('.full-text')) > 0 else 0
+                desc = b.select('.full-text')[0].text.replace('\n', '').replace('\t', '') if len(b.select('.full-text')) > 0 else 0
                 tbody = b.findAll('tbody')[0]
                 is_selling = tbody.findAll('tr')[0].findAll('td')[0].h3.text
                 type_ = tbody.findAll('tr')[0].findAll('td')[1].h3.text
@@ -79,12 +79,11 @@ def crawlLinks(neighbourhoods):
                     spans = ex.select('span')
 
                     if len(spans) == 1:
-                        extras[spans[0]['title']] = 0
+                        extras[spans[0]['title']] = 1
                     elif len(spans) == 2:
                         extras[spans[1]['title']] = spans[0].text
 
-                offers = offers.append({'link': link,
-                                        'is_selling': is_selling,
+                offers = offers.append({'link': base_url + link,
                                         'type': type_,
                                         'extras': str(extras),
                                         'place': nbhd,
