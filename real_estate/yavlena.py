@@ -6,26 +6,26 @@ import re
 from tqdm import tqdm
 from helpers import clean_text, replace_month_with_digit, months
 import time
-import selenium
+from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from webdriver_manager.chrome import ChromeDriverManager
 
 
-base_url = 'https://yavlena.bg'
-base_search_url = "drundni_{}_maini"
-offers_file = "yavlena.bg_"
+base_url = 'https://yavlena.com'
+base_search_url = "https://www.yavlena.com/properties/all/sofia/sofia/?{}ptype=Room,Studio,OneBedroomApartment,TwoBedroomApartment,ThreeBedroomApartment,FourBedroomApartment,FivePlusBedroomApartment,House,HouseWholeFloor&view=List"
+offers_file = "yavlena_"
 
 
 def get_neighbourhood_links():
-    rq = request.get(base_search_url)
-    page = bs4.BeautifulSoup(rq, 'html')
-    neighbourhoods  = page.findAll('input',
-                                  attrs={'name': 'quarters',
-                                        'type':'checkbox'})
-
+    browser = webdriver.Chrome(ChromeDriverManager().install())
+    browser.get(base_search_url.format(''))
+    page = bs4.BeautifulSoup(browser.page_source, 'html')
+    neighbourhoods  = page.findAll('input', attrs={'name': 'quarters', 'type':'checkbox'})
+    browser.close()
     #tuple(neighbourhood_name, link)
-    neighbourhoods = [(n['data-quarter'], base_search_url.format(n['value'])) for n in neighbourhoods]
+    neighbourhoods = [(n['data-quarter'], base_search_url.format("quarter=" + n['value'] + '&')) for n in neighbourhoods]
     
     return neighbourhoods
 
@@ -42,29 +42,20 @@ def gather_new_articles(current_date):
 
 def crawlLinks(neighbourhoods):
     offers = pd.DataFrame()
-    browser = webdriver.Chrome(executable_path='./webdriver/chromedriver.exe')
-	
+    browser = webdriver.Chrome(ChromeDriverManager().install())
+
     for nbhd, nbhd_link in tqdm(neighbourhoods):
         browser.get(nbhd_link)
-        time.sleep(10)
+        time.sleep(7)
         page = bs4.BeautifulSoup(browser.page_source, 'html')
-        load_more = False
+        load_more = len(page.findAll('div', attrs={'class': 'load-more-holder', 'style':re.compile('block')})) > 0
         
+        #when there more results to load
         while load_more:
-            # 1
-            button = WebDriverWait(browser, 20).until(EC.element_to_be_clickable((By.ID, "btnNew")))
-            button.click()
-
-            # 2
-            browser.find_element_by_xpath("//div[@class='vhodOptions']//input[@value=2]").click()
-
-            # 3
-            browser.execute_script()
-
-            # click Зареди Още
+            browser.find_element_by_class_name("load-more-results-list").click()
             time.sleep(2)
             page = bs4.BeautifulSoup(browser.page_source, 'html')
-            load_more = len(page.findAll('a', text = 'Зареди още', attrs={'class': 'load-more-results-list'})) > 0
+            load_more = len(page.findAll('div', attrs={'class': 'load-more-holder', 'style':re.compile('block')})) > 0
 
         # scrape all offer boxes for that neighbourhood
         boxes = page.findAll('article', attrs={'class': 'card-list-item'})
