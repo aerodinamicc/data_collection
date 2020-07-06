@@ -204,7 +204,7 @@ def crawlLinks(links, nbbhds, current_date):
                                                'date': date,
                                                'agency': agency,
                                                'poly': poly}, index=[0])
-            # print(current_offer)
+            #import pdb; pdb.set_trace()
 
             offers = pd.concat([offers, current_offer], ignore_index=True)
 
@@ -212,7 +212,7 @@ def crawlLinks(links, nbbhds, current_date):
             print(e)
             continue
             
-    offers = offers[['link', 'title', 'address', 'details', 'place', 'lon', 'lat', 'id', 'price', 'price_sqm', 'area', 'floor', 'description', 'views', 'date', 'agency', 'poly']]											   
+    offers = offers[['link', 'title', 'address', 'details', 'neighbourhood', 'lon', 'lat', 'id', 'price', 'price_sqm', 'area', 'floor', 'description', 'views', 'date', 'agency', 'poly']]											   
     offers.to_csv(offers_file + current_date + '.tsv', sep='\t', index=False)
 
     return offers
