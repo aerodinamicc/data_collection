@@ -7,9 +7,6 @@ from tqdm import tqdm
 from helpers import clean_text, replace_month_with_digit, months
 import time
 from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
 
 
