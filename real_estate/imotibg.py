@@ -51,8 +51,8 @@ def gather_new_articles(current_date):
 
     offers, coors = crawlLinks(links)
     offers = enrich_with_location(offers, coors)
-    offers = offers['address', 'place', 'details', 'id', 'link', 'title', 'lon', 'lat', 'description']
-    if os.path.exists('output'):
+    offers = offers[['address' , 'place', 'details', 'id', 'link', 'title', 'lon', 'lat', 'description']]
+    if not os.path.isdir('output'):
         os.mkdir('output')
     offers.to_csv('output/' + offers_file + current_date + '.tsv', sep='\t', index=False)
 

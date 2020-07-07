@@ -71,7 +71,7 @@ def get_all_links_for_each_neighbourhood(neighbourhoods, current_date):
 
     links = list(set(links))
     links_df = pd.DataFrame(links, columns=['link', 'neighbourhood'])
-    if os.path.exists('output'):
+    if not os.path.exists('output'):
         os.mkdir('output')
     links_df.to_csv('output/' + links_file + current_date + '.tsv', sep='\t', index=False)
 

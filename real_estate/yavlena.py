@@ -1,5 +1,6 @@
 import argparse
 import bs4
+import os
 import requests
 import pandas as pd
 import re
@@ -34,7 +35,7 @@ def gather_new_articles(current_date):
 
     offers = crawlLinks(neighbourhoods)            
     offers = offers[['link', 'type', 'extras', 'place', 'lon', 'lat', 'price', 'area', 'description']]											   
-    if os.path.exists('output'):
+    if not os.path.exists('output'):
         os.mkdir('output')
     offers.to_csv('output/' + offers_file + current_date + '.tsv', sep='\t', index=False)
 
