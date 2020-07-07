@@ -7,12 +7,13 @@ import pandas as pd
 import re
 import json
 import os
-from tqdm import tqdm
+from datetime import datetime
 from selenium import webdriver
+from tqdm import tqdm
 
 
-links_file = "imoti.bg_links_"
-offers_file = "imoti.bg_"
+links_file = "imotibg_links_"
+offers_file = "imotibg_"
 
 
 def get_links_from_results_page(page):
@@ -29,31 +30,31 @@ def enrich_with_location(df, coors):
 
 
 def gather_new_articles(current_date):
-    if os.path.exists(links_file + current_date + '.tsv'):
-        links = list(pd.read_csv(links_file + current_date + '.tsv', sep='\t')['link'].values)
-    else:
-        links = []
-        base = 'http://www.imotibg.com/property/index/1'
-        first_page = base + '?page=1'
+    links = []
+    base = 'http://www.imotibg.com/property/index/1'
+    first_page = base + '?page=1'
 
-        last_page = False
+    last_page = False
 
-        while not last_page:
-            request = requests.get(first_page)
-            page = bs4.BeautifulSoup(request.text, 'html.parser')
-            next_page = page.select('.next')[0]
-            links = links + get_links_from_results_page(page)
-            if next_page.has_attr('href'):
-                first_page = base + next_page['href']
-                print(first_page)
-            else:
-                last_page = True
+    while not last_page:
+        request = requests.get(first_page)
+        page = bs4.BeautifulSoup(request.text, 'html.parser')
+        next_page = page.select('.next')[0]
+        links = links + get_links_from_results_page(page)
+        if next_page.has_attr('href'):
+            first_page = base + next_page['href']
+            print(first_page)
+        else:
+            last_page = True
 
-        links = list(set(links))
+    links = list(set(links))
 
     offers, coors = crawlLinks(links)
     offers = enrich_with_location(offers, coors)
-    offers.to_csv(offers_file + current_date + '.tsv', sep='\t', index=False)
+    offers = offers['address', 'place', 'details', 'id', 'link', 'title', 'lon', 'lat', 'description']
+    if os.path.exists('output'):
+        os.mkdir('output')
+    offers.to_csv('output/' + offers_file + current_date + '.tsv', sep='\t', index=False)
 
     return offers
 
@@ -71,18 +72,19 @@ def crawlLinks(links):
 
             title = page.select('.property-title')[0].select('h1')[0].text.replace('\n', '')
             id = re.search('property([\d]+)\.html', link).group(1)
-            address = page.select('.property-title')[0].select('figure')[0].text.replace('\n', '') \
+            address = page.select('.property-title')[0].select('figure')[0].text.replace('\n', '').replace('Ориентир:', '') \
                                                 if len(page.select('.property-title')[0].select('figure')) > 0 else None
-
-            details = None
+            # София Враждебна  По договаряне 	5657
+            # София - Герман  338000
+            place = re.search('София(.+?)(?=По договаряне|[\d]+)', title).group(1).replace('-', '').strip() if re.search('София(.+?)(?=По договаряне|[\d]+)', title) is not None else ''
+            details = {}
             if len(page.select('.section-sub')) > 0:
                 imotData = page.select('.section-sub')[0].select('dt')
                 imotDataValue = page.select('.section-sub')[0].select('dd')
-                details = [(imotData[i].text.replace('\n', ''),
-                            imotDataValue[i].text.replace('\n', '').replace('\t', '').strip())
-                           for i in range(0, len(imotData))]
+                for i in range(0, len(imotData)):
+                    details[imotData[i].text.replace('\n', '')] = imotDataValue[i].text.replace('\n', '').replace('\t', '').strip()
 
-            desc = page.select('#description')[0].text if len(page.select('#description')) > 0 else None
+            desc = page.select('#description')[0].text.replace('\n:', '').replace('\t', '') if len(page.select('#description')) > 0 else None
             additional_phrase = "var aditional = '"
             additional_st = rq.text.find(additional_phrase)
             additional_end = rq.text.find("]'", additional_st)
@@ -93,8 +95,9 @@ def crawlLinks(links):
 
             offers = offers.append({'id': id,
                                     'title': title,
+                                    'place': place,
                                     'address': address,
-                                    'details': details,
+                                    'details': str(details),
                                     'link': link,
                                     'description': desc},
                                    ignore_index=True)
@@ -108,8 +111,5 @@ def crawlLinks(links):
 
 
 if __name__ == '__main__':
-	parser = argparse.ArgumentParser()
-	parser.add_argument('-current_date', required=True, help="MMDD")
-	parsed = parser.parse_args()
-	current_date = parsed.current_date
+	current_date = str(datetime.now().date())
 	gather_new_articles(current_date)

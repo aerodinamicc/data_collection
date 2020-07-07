@@ -10,11 +10,12 @@ from tqdm import tqdm
 import json
 import urllib
 from helpers import clean_text, replace_month_with_digit, months
+from datetime import datetime
 
 
 base_url = 'http://sofia.holmes.bg'
-links_file = "holmes.bg_links_"
-offers_file = "holmes.bg_"
+links_file = "holmes_links_"
+offers_file = "holmes_"
 
 
 def get_neighbourhood_links():
@@ -70,7 +71,9 @@ def get_all_links_for_each_neighbourhood(neighbourhoods, current_date):
 
     links = list(set(links))
     links_df = pd.DataFrame(links, columns=['link', 'neighbourhood'])
-    links_df.to_csv(links_file + current_date + '.tsv', sep='\t', index=False)
+    if os.path.exists('output'):
+        os.mkdir('output')
+    links_df.to_csv('output/' + links_file + current_date + '.tsv', sep='\t', index=False)
 
     return links_df['link'].values,  links_df['neighbourhood'].values
 
@@ -84,6 +87,8 @@ def gather_new_articles(current_date):
         links, nbbhds = get_all_links_for_each_neighbourhood(neighbourhoods, current_date)
 
     offers = crawlLinks(links, nbbhds, current_date)
+    offers = offers[['link', 'title', 'address', 'details', 'neighbourhood', 'lon', 'lat', 'id', 'price', 'price_sqm', 'area', 'floor', 'description', 'views', 'date', 'agency', 'poly']]											   
+    offers.to_csv('output/' + offers_file + current_date + '.tsv', sep='\t', index=False)
 
     return offers
 
@@ -211,16 +216,10 @@ def crawlLinks(links, nbbhds, current_date):
         except Exception as e:
             print(e)
             continue
-            
-    offers = offers[['link', 'title', 'address', 'details', 'neighbourhood', 'lon', 'lat', 'id', 'price', 'price_sqm', 'area', 'floor', 'description', 'views', 'date', 'agency', 'poly']]											   
-    offers.to_csv(offers_file + current_date + '.tsv', sep='\t', index=False)
 
     return offers
 
 
 if __name__ == '__main__':
-	parser = argparse.ArgumentParser()
-	parser.add_argument('-current_date', required=True, help="MMDD")
-	parsed = parser.parse_args()
-	current_date = parsed.current_date
+	current_date = str(datetime.now().date())
 	gather_new_articles(current_date)

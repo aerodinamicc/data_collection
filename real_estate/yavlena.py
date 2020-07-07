@@ -8,6 +8,8 @@ from helpers import clean_text, replace_month_with_digit, months
 import time
 from selenium import webdriver
 from webdriver_manager.chrome import ChromeDriverManager
+from datetime import datetime
+
 
 
 base_url = 'https://yavlena.com'
@@ -32,7 +34,9 @@ def gather_new_articles(current_date):
 
     offers = crawlLinks(neighbourhoods)            
     offers = offers[['link', 'type', 'extras', 'place', 'lon', 'lat', 'price', 'area', 'description']]											   
-    offers.to_csv(offers_file + current_date + '.tsv', sep='\t', index=False)
+    if os.path.exists('output'):
+        os.mkdir('output')
+    offers.to_csv('output/' + offers_file + current_date + '.tsv', sep='\t', index=False)
 
     return offers
 
@@ -76,7 +80,7 @@ def crawlLinks(neighbourhoods):
                     spans = ex.select('span')
 
                     if len(spans) == 1:
-                        extras[spans[0]['title']] = 1
+                        extras[spans[0]['title']] = 0
                     elif len(spans) == 2:
                         extras[spans[1]['title']] = spans[0].text
 
@@ -100,8 +104,5 @@ def crawlLinks(neighbourhoods):
 
 
 if __name__ == '__main__':
-	parser = argparse.ArgumentParser()
-	parser.add_argument('-current_date', required=True, help="MMDD")
-	parsed = parser.parse_args()
-	current_date = parsed.current_date
+	current_date = str(datetime.now().date())
 	gather_new_articles(current_date)
