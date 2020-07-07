@@ -30,13 +30,13 @@ COLUMNS = ['comments', 'views', 'shares', 'created_timestamp', 'visited_timestam
            'tags', 'section', 'title', 'subtitle', 'category', 'link',
            'article_text', 'author', 'thumbs_down', 'thumbs_up', 'location']
 
-DESTINATION_BUCKET = 'news-scrapper'
+DESTINATION_BUCKET = 'news-scrapping'
 
 
 def save_file(event, context):
     for site in mapping.keys():
         # not UTC but EET
-        now = datetime.now() + timedelta(hours=2)
+        now = datetime.now()
         now_date = str(now.date())
         now_hour = str(now.hour)
         file_name = site + '_' + now_date + '_' + now_hour + 'h.tsv'
