@@ -12,10 +12,8 @@ def gather_new_articles(site):
     request = requests.get(site)
     soup = bs4.BeautifulSoup(request.text, 'lxml')
 
-    all_articles = set([site + a['href'] for a in soup.find_all('a', href=True) if
-                  '/article/' in a['href'] and a['href'].startswith('/')])
-
-    all_articles = crawlLinks(all_articles)
+    all_articles = set([site + a['href'] for a in soup.findAll('a', attrs={'href':re.compile('/novini/article/[\d]+$')})])
+    all_articles = crawlLinks(list(all_articles))
 
     return all_articles
 
@@ -27,7 +25,6 @@ def crawlLinks(links):
         try:
             rq = requests.get(link)
             domain = "{0.netloc}".format(urlsplit(link))
-            category = re.search(domain + '/([^/]+)', link).group(1)
 
             if rq.status_code == 200:
                 page = bs4.BeautifulSoup(rq.text, 'lxml')
@@ -60,7 +57,6 @@ def crawlLinks(links):
                                                             'date': articleDate,
                                                             #'shares': shares,
                                                             'views': clean_text(views),
-                                                            'category': category,
                                                             'article_text': article_text},
                                                            ignore_index=True)
         except:

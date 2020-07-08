@@ -13,16 +13,8 @@ def gather_new_articles(site):
     request = requests.get(site)
     soup = bs4.BeautifulSoup(request.text, 'lxml')
 
-    most_read = set([art.a['href'] for art in soup.find({id: 'mostRead'}).select('.simple-post') if art.a['href'].endswith('.html')])
     all_articles = set([a['href'] for a in soup.find_all('a', href=True) if a['href'].startswith(site) and a['href'].endswith('.html')])
-    all_articles = all_articles.difference(most_read)
-
-    most_read = crawlLinks(most_read)
-    most_read['section'] = 'most_read'
-    all_articles = crawlLinks(all_articles)
-    all_articles['section'] = None
-
-    articles = pd.concat([most_read, all_articles])
+    articles = crawlLinks(all_articles)
 
     return articles
 
@@ -30,12 +22,11 @@ def gather_new_articles(site):
 def crawlLinks(links):
     articlesContent = pd.DataFrame()
 
-    for link in links:
-        try:
+    for link in list(links):
+        try:    
             rq = requests.get(link)
             domain = "{0.netloc}".format(urlsplit(link))
             category = re.search(domain + '/([^/]+)', link).group(1)
-
             if rq.status_code == 200:
                 page = bs4.BeautifulSoup(rq.text, 'lxml')
 
@@ -71,7 +62,7 @@ def crawlLinks(links):
                 month_name = month_name.group(1) if month_name is not None else None
                 articleDate = articleDate.replace(month_name, replace_month_with_digit(month_name)) \
                     if month_name is not None else articleDate
-                articleDate = pd.to_datetime(articleDate, format='%d %m. %Y,  %H:%M')
+                articleDate = pd.to_datetime(articleDate, format='%d %m %Y,  %H:%M')
 
                 article_text = clean_text(page.select('.post-content')[0].select('div')[2].text)
 

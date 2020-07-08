@@ -12,18 +12,31 @@ import site7
 import site8
 import site9
 
-
-mapping = {
-    'vesti.bg': site1.gather_new_articles('https://www.vesti.bg'),
-    'news.bg': site2.gather_new_articles('https://news.bg/'),
-    'blitz.bg': site3.gather_new_articles('https://blitz.bg'),
-    'dir.bg': site4.gather_new_articles('https://dir.bg/'),
-    '24chasa.bg': site5.gather_new_articles('https://www.24chasa.bg'),
-    'nova.bg': site6.gather_new_articles('https://nova.bg/news'),
-    'fakti.bg': site7.gather_new_articles('https://fakti.bg'),
-    'dnevnik.bg': site8.gather_new_articles('https://www.dnevnik.bg'),
-    'sportal.bg': site9.gather_new_articles('https://www.sportal.bg/')
-}
+def get_new_articles(site):
+    articles = None
+    
+    if site == 'vesti.bg': 
+        articles = site1.gather_new_articles('https://www.vesti.bg')
+    elif site == 'news.bg':
+        articles = site2.gather_new_articles('https://news.bg/')
+    elif site == 'blitz.bg':
+        articles = site3.gather_new_articles('https://blitz.bg')
+    elif site == 'dir.bg':
+        articles = site4.gather_new_articles('https://dir.bg/')
+    elif site == '24chasa.bg':
+        articles = site5.gather_new_articles('https://www.24chasa.bg')
+    elif site == 'nova.bg':
+        articles = site6.gather_new_articles('https://nova.bg/news')
+    elif site == 'fakti.bg': 
+        articles = site7.gather_new_articles('https://fakti.bg')
+    elif site == 'dnevnik.bg': 
+        articles = site8.gather_new_articles('https://www.dnevnik.bg')
+    elif site == 'sportal.bg': 
+        articles = site9.gather_new_articles('https://www.sportal.bg/')
+    
+    return articles
+    
+sites = ['vesti.bg', 'news.bg', 'blitz.bg', 'dir.bg', '24chasa.bg', 'nova.bg', 'fakti.bg', 'dnevnik.bg', 'sportal.bg'] # 
 
 
 COLUMNS = ['comments', 'views', 'shares', 'created_timestamp', 'visited_timestamp',
@@ -33,15 +46,16 @@ COLUMNS = ['comments', 'views', 'shares', 'created_timestamp', 'visited_timestam
 DESTINATION_BUCKET = 'news-scrapping'
 
 
-def save_file(event, context):
-    for site in mapping.keys():
+def save_file():
+    for site in sites:
+        logging.debug('Scrapping {}'.format(site))
         # not UTC but EET
         now = datetime.now()
         now_date = str(now.date())
         now_hour = str(now.hour)
         file_name = site + '_' + now_date + '_' + now_hour + 'h.tsv'
 
-        articles = mapping[site]
+        articles = get_new_articles(site)
         articles.rename(columns={'date': 'created_timestamp'}, inplace=True)
         articles['visited_timestamp'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 

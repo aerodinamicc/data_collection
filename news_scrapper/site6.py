@@ -12,11 +12,12 @@ def gather_new_articles(site):
     request = requests.get(site)
     soup = bs4.BeautifulSoup(request.text, 'lxml')
 
-    all_articles = set([unquote(a['href']) for a in soup.find_all('a', href=True) if
+    all_articles = set([unquote(a['href']) for a in soup.findAll('a', attrs={'href': re.compile(site+'/view/')}) if
                   a['href'].startswith(site) and
                   a['href'].endswith('/') and
                   'category/' not in a['href'] and
                   'бъдете-с-nova-през-целия-ден' not in unquote(a['href'])])
+    import pdb; pdb.set_trace()
 
     all_articles = crawlLinks(all_articles)
 
@@ -25,7 +26,7 @@ def gather_new_articles(site):
 
 def crawlLinks(links):
     articles_content = pd.DataFrame()
-
+    import pdb; pdb.set_trace()
     for link in links:
         try:
             rq = requests.get(link)
@@ -40,8 +41,8 @@ def crawlLinks(links):
                     continue
 
                 subtitle = page.select('.article-sub-title')[0].text.strip()
-                author = page.select('.author-name')
-                author = author[0].text if author is not None else None
+                #author = page.select('.author-name')
+                #author = author[0].text if author is not None else None
 
                 # 21 ноември 2019  19:42
                 articleDate = page.select('.date-time')[0].text
@@ -109,7 +110,7 @@ def crawlLinks(links):
                 articles_content = articles_content.append({'link': link,
                                                             'title': clean_text(headline),
                                                             'subtitle': clean_text(subtitle),
-                                                            'author': clean_text(author),
+                                                            #'author': clean_text(author),
                                                             'date': articleDate,
                                                             'tags': tags,
                                                             #'shares': shares,

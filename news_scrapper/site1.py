@@ -8,19 +8,12 @@ from helpers import clean_text, replace_month_with_digit
 
 
 def gather_new_articles(site):
+    print(site)
     request = requests.get(site)
     soup = bs4.BeautifulSoup(request.text, 'lxml')
-
-    top_news = set([art['href'] for art in soup.select('.gtm-TopNews-click')])
-    all_articles = set([art['href'] for art in soup.find_all('a', href=True) if art['href'].startswith(site)])
-    all_articles = all_articles.difference(top_news)
-
-    top_news = crawlLinks(top_news)
-    top_news['section'] = 'top_news'
-    all_articles = crawlLinks(all_articles)
-    all_articles['section'] = None
-
-    articles = pd.concat([top_news, all_articles])
+    
+    all_articles = set([art['href'] for art in soup.findAll('a', href=re.compile('^' + site + '.*' + '[\d]{7}$'))])
+    articles = crawlLinks(all_articles)
 
     return articles
 
@@ -28,7 +21,7 @@ def gather_new_articles(site):
 def crawlLinks(links):
     articlesContent = pd.DataFrame()
 
-    for link in list(links)[0:5]:
+    for link in list(links):
         try:
             rq = requests.get(link)
             if rq.status_code == 200:

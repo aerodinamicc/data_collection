@@ -13,7 +13,7 @@ def gather_new_articles(site):
     soup = bs4.BeautifulSoup(request.text, 'lxml')
 
     most_read = set([art.h2.a['href'] for art in soup.select('.additional-articles')[0].find_all('ul')[1].select('li')])
-    all_articles = set([a['href'] for a in soup.select('a') if a['href'].startswith(site)])
+    all_articles = set([a['href'] for a in soup.select('a') if a['href'].startswith(site) and a['href'].endswith('.html')])
     all_articles = all_articles.difference(most_read)
 
     most_read = crawlLinks(most_read)
