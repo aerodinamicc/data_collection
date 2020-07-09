@@ -11,6 +11,8 @@ real_estate_tenders/__pycache__/
 /ecommerce/google_maps_poi_filter/*.txt
 /ecommerce/google_maps_poi_filter/*.tsv
 */.vscode/
+news_scrapper/*.tsv
+news_scrapper/*.csv
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

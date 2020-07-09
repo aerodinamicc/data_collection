@@ -11,7 +11,7 @@ from helpers import clean_text, replace_month_with_digit
 
 def gather_new_articles(site):
     request = requests.get(site)
-    soup = bs4.BeautifulSoup(request.text, 'lxml')
+    soup = bs4.BeautifulSoup(request.text, 'html')
 
     all_articles = set([a['href'] for a in soup.find_all('a', href=True) if a['href'].startswith(site) and a['href'].endswith('.html')])
     articles = crawlLinks(all_articles)
@@ -28,7 +28,7 @@ def crawlLinks(links):
             domain = "{0.netloc}".format(urlsplit(link))
             category = re.search(domain + '/([^/]+)', link).group(1)
             if rq.status_code == 200:
-                page = bs4.BeautifulSoup(rq.text, 'lxml')
+                page = bs4.BeautifulSoup(rq.text, 'html')
 
                 if page.find({'class': 'article-post'}):
                     body = page.select('.article-post')[0]

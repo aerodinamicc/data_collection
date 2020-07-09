@@ -10,7 +10,7 @@ from helpers import clean_text, replace_month_with_digit
 
 def gather_new_articles(site):
     request = requests.get(site)
-    soup = bs4.BeautifulSoup(request.text, 'lxml')
+    soup = bs4.BeautifulSoup(request.text, 'html')
 
     most_read = set([art.h2.a['href'] for art in soup.select('.additional-articles')[0].find_all('ul')[1].select('li')])
     all_articles = set([a['href'] for a in soup.select('a') if a['href'].startswith(site) and a['href'].endswith('.html')])
@@ -36,7 +36,7 @@ def crawlLinks(links):
             category = re.search(domain + '/([^/]+)', link).group(1)
 
             if rq.status_code == 200:
-                page = bs4.BeautifulSoup(rq.text, 'lxml')
+                page = bs4.BeautifulSoup(rq.text, 'html')
 
                 headline = page.select('h1')[0].text
                 author = page.select('.author')

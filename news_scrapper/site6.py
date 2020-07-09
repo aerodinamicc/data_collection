@@ -10,14 +10,13 @@ from helpers import clean_text, replace_month_with_digit
 
 def gather_new_articles(site):
     request = requests.get(site)
-    soup = bs4.BeautifulSoup(request.text, 'lxml')
+    soup = bs4.BeautifulSoup(request.text, 'html')
 
     all_articles = set([unquote(a['href']) for a in soup.findAll('a', attrs={'href': re.compile(site+'/view/')}) if
                   a['href'].startswith(site) and
                   a['href'].endswith('/') and
                   'category/' not in a['href'] and
                   'бъдете-с-nova-през-целия-ден' not in unquote(a['href'])])
-    import pdb; pdb.set_trace()
 
     all_articles = crawlLinks(all_articles)
 
@@ -26,13 +25,12 @@ def gather_new_articles(site):
 
 def crawlLinks(links):
     articles_content = pd.DataFrame()
-    import pdb; pdb.set_trace()
     for link in links:
         try:
             rq = requests.get(link)
 
             if rq.status_code == 200:
-                page = bs4.BeautifulSoup(rq.text, 'lxml')
+                page = bs4.BeautifulSoup(rq.text, 'html')
                 category = page.select('.gtm-ArticleBreadcrumb-click')[0].text
                 headline = page.select('.title-wrap-roboto')[0].h1.text.strip()
 

@@ -11,7 +11,7 @@ from helpers import clean_text, replace_month_with_digit
 
 def gather_new_articles(site):
     request = requests.get(site)
-    soup = bs4.BeautifulSoup(request.text, 'lxml')
+    soup = bs4.BeautifulSoup(request.text, 'html')
 
     all_articles = set([a['href'] for a in soup.find_all('a', href=True) if
                   re.match('^https://\w+\.dir\.bg/\w+/', a['href'])
@@ -33,7 +33,7 @@ def crawlLinks(links):
             category = re.search(domain + '/([^/]+)', link).group(1)
 
             if rq.status_code == 200:
-                page = bs4.BeautifulSoup(rq.text, 'lxml')
+                page = bs4.BeautifulSoup(rq.text, 'html')
                 titles = page.select('.text-wrapper')[0]
                 headline = titles.h2.text
                 subtitle = page.select('.text-wrapper')[0].p.text
