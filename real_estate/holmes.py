@@ -33,7 +33,7 @@ def get_neighbourhood_links():
 
 
 def get_all_links_for_each_neighbourhood(neighbourhoods, current_date):
-    links = set([])
+    links = pd.DataFrame()
 
     for n in neighbourhoods:
         pages = set([1])
@@ -63,6 +63,7 @@ def get_all_links_for_each_neighbourhood(neighbourhoods, current_date):
         for p in search_pages:
             resp = requests.get(p)
             page = bs4.BeautifulSoup(resp.content.decode('cp1251'), 'html')
+
             visible_links = page.findAll('a', href=re.compile('/pcgi/home\.cgi.*act=3.*adv=[\w\d]+$'), attrs={'class': 'linkLocatList'})
             visible_links = [(base_url + i['href'], n[0]) for i in visible_links]
             links.update(set(visible_links))
