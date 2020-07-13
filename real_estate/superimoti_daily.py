@@ -14,30 +14,23 @@ search_url = "https://www.superimoti.bg/search/index.php?&country_id=1&stown=0&s
 offers_file = "superimoti_"
 
 def get_page_count(page):
+    import pdb; pdb.set_trace()
     max_page = max([int(re.search('([\d]+)', a.text).group(1)) for a in page.findAll('a', attrs={'href': re.compile('&page=')}) if re.search('[\d]+', a.text) is not None])
     return max_page
 
 
 def gather_new_articles(current_date):
-    #resp_sale = requests.get(search_url.format('sale', '1'))
-    #page_sale = bs4.BeautifulSoup(resp_sale.text, 'html')
-    #resp_rent = requests.get(search_url.format('rent', '1'))
-    #page_rent = bs4.BeautifulSoup(resp_rent.text, 'html')
+    resp_sale = requests.get(search_url.format('1', '1'))
+    page_sale = bs4.BeautifulSoup(resp_sale.text, 'html')
 
-    with open('C:/Users/shadow/Downloads/superimoti_results.html', 'r', encoding='cp1251') as f:
-        resp_sale = f.read()
-
-    with open('C:/Users/shadow/Downloads/superimoti_results_rent.html', 'r', encoding='cp1251') as f:
-        resp_rent = f.read()
-
-    page_sale = bs4.BeautifulSoup(resp_sale, 'html')
-    page_rent = bs4.BeautifulSoup(resp_rent, 'html')
+    resp_rent = requests.get(search_url.format('2', '1'))
+    page_rent = bs4.BeautifulSoup(resp_rent.text, 'html')
 
     page_count_sale = get_page_count(page_sale)
     page_count_rent = get_page_count(page_rent)
 
-    offers_sale = crawlLinks('sale', 1) #page_count_sale)  
-    offers_rent = crawlLinks('rent', 1) #page_count_rent)    
+    offers_sale = crawlLinks('sale', page_count_sale)  #1) #
+    offers_rent = crawlLinks('rent', page_count_rent)  # 1) #
     offers = pd.concat([offers_rent, offers_sale], ignore_index=True)       
 
     offers = offers[['link', 'label', 'title', 'id', 'type', 'is_for_sale', 'place', 'price', 'clean_price', 'area', 'floor', 'total_floors', 'details']]
@@ -53,16 +46,11 @@ def crawlLinks(type_of_offering, page_count):
     offers = pd.DataFrame()
 
     for page_n in tqdm(range(1, page_count + 1)):
-        #resp = requests.get(search_url.format(1 if type_of_offering == 'sale' else 2, str(page_n)))
-        #page = bs4.BeautifulSoup(resp.text, 'html')
-        with open('C:/Users/shadow/Downloads/superimoti_results.html' if type_of_offering == 'sale' \
-                else 'C:/Users/shadow/Downloads/superimoti_results_rent.html', 'r', encoding='cp1251') as f:
-            resp = f.read()
-
-        page = bs4.BeautifulSoup(resp, 'html')
+        resp = requests.get(search_url.format(1 if type_of_offering == 'sale' else 2, str(page_n)))
+        page = bs4.BeautifulSoup(resp.text, 'html')
 
         boxes = page.findAll('div', attrs={'class': 'offer'})
-        import pdb; pdb.set_trace()
+        #import pdb; pdb.set_trace()
         for b in boxes:
             try:
                 link = b.find('a', attrs={'class':'lnk'})['href']
@@ -72,6 +60,14 @@ def crawlLinks(type_of_offering, page_count):
                 id = b['id'].replace('prop', '')
                 place = clean_text(b.find('div', attrs={'class':'loc'}).text).replace('Софийска област, България', '').replace('гр. София / ', '').replace('кв. ', '')
                 is_for_sale = type_of_offering == 'sale'
+                
+                #Details
+                keys = b.find('div', attrs={'class':'lst'}).findAll('b')
+                values = b.find('div', attrs={'class':'lst'}).findAll('i')
+                details = {}
+                for i in range(len(keys)):  
+                    details[keys[i].text.strip()] = values[i].text.strip()
+
                 total_floors = details['Етажност на сградата:'] if 'Етажност на сградата:' in details.keys() else ''
 
                 #Extending labels and cleaning the 'type' field
@@ -83,14 +79,7 @@ def crawlLinks(type_of_offering, page_count):
                 if 'Предварителни продажби' in typ:
                     typ = typ.replace('Предварителни продажби', '').replace('(', '').replace(')', '').strip()
                     label = label + ', Предварителни продажби' if len(label) > 0 else 'Предварителни продажби'
-                
-                #Details
-                keys = b.find('div', attrs={'class':'lst'}).findAll('b')
-                values = b.find('div', attrs={'class':'lst'}).findAll('i')
-                details = {}
-                for i in range(len(keys)):  
-                    details[keys[i].text.strip()] = values[i].text.strip()
-
+ 
                 area = details['Площ:'].replace(' м²', '') if 'Площ:' in details.keys() \
                     else details['Площ на сградата:'].replace(' м²', '') if 'Площ на сградата:' in details.keys() \
                     else details['Площи:'].replace(' м²', '') if 'Площи:' in details.keys() \
