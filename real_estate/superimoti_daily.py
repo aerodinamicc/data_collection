@@ -70,7 +70,7 @@ def crawlLinks(type_of_offering, page_count):
                 label = clean_text(b.find('div', attrs={'class':'band'}).text) if len(b.findAll('div', attrs={'class':'band'})) > 0 else ''
                 typ = clean_text(b.find('div', attrs={'class':'ttl'}).text)
                 id = b['id'].replace('prop', '')
-                place = clean_text(b.find('div', attrs={'class':'loc'}).text).replace('Софийска област, България', '').replace('гр. София / ', '')
+                place = clean_text(b.find('div', attrs={'class':'loc'}).text).replace('Софийска област, България', '').replace('гр. София / ', '').replace('кв. ', '')
                 is_for_sale = type_of_offering == 'sale'
                 total_floors = details['Етажност на сградата:'] if 'Етажност на сградата:' in details.keys() else ''
 
