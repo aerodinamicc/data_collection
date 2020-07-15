@@ -13,6 +13,7 @@ real_estate_tenders/__pycache__/
 */.vscode/
 news_scrapper/*.tsv
 news_scrapper/*.csv
+news_scrapper/output/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

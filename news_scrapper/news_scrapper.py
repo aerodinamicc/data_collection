@@ -1,6 +1,8 @@
+import argparse
 import boto3
 from datetime import datetime, timedelta
 from io import StringIO
+import os
 import logging
 import site1
 import site2
@@ -46,9 +48,11 @@ COLUMNS = ['comments', 'views', 'shares', 'created_timestamp', 'visited_timestam
 DESTINATION_BUCKET = 'news-scrapping'
 
 
-def save_file():
+def save_file(is_run_locally):
+    start = time.time()
+
     for site in sites:
-        logging.debug('Scrapping {}'.format(site))
+        logging.debug('Scrapping {}'.format(site.upper()))
         # not UTC but EET
         now = datetime.now()
         now_date = str(now.date())
@@ -56,7 +60,7 @@ def save_file():
         file_name = site + '_' + now_date + '_' + now_hour + 'h.tsv'
 
         articles = get_new_articles(site)
-        articles.rename(columns={'date': 'created_timestamp'}, inplace=True)
+        #articles.rename(columns={'date': 'created_timestamp'}, inplace=True)
         articles['visited_timestamp'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         # accomodate all columns across all datasets
@@ -66,13 +70,27 @@ def save_file():
 
         articles = articles[COLUMNS]
 
-        csv_buffer = StringIO()
-        articles.to_csv(csv_buffer, sep='\t', encoding='utf-16', index=False)
-        logging.debug(site + ' has ' + str(articles.shape[0]) + ' articles.\n')
-        s3 = boto3.resource('s3')
-        s3.Object(DESTINATION_BUCKET, 'raw/' + site + '/' + now_date + '/' + file_name).put(Body=csv_buffer.getvalue())
+        if not is_run_locally:
+            csv_buffer = StringIO()
+            articles.to_csv(csv_buffer, sep='\t', encoding='utf-16', index=False)
+            logging.debug(site + ' has ' + str(articles.shape[0]) + ' articles.\n')
+            session = boto3.session.Session(profile_name='aero')
+
+            s3 = session.resource('s3')
+            s3.Object(DESTINATION_BUCKET, 'raw/' + site + '/' + now_date + '/' + file_name).put(Body=csv_buffer.getvalue())
+        else:
+            if not os.path.exists('output'):
+                os.mkdir('output')
+            articles.to_csv('output/' + file_name, sep='\t', encoding='utf-16', index=False)
+
+    logging.debug('Processing took {} hours.'.format(str(timedelta(seconds=time.time() - start))))
+    print('Processing took {} hours'.format(str(timedelta(seconds=time.time() - start))))
 
 
 if __name__ == '__main__':
-    save_file()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-is_run_locally', required=False, help="MMDD", default=False)
+    parsed = parser.parse_args()
+    is_run_locally = bool(parsed.is_run_locally)
+    save_file(is_run_locally)
 
