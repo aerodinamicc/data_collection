@@ -64,7 +64,7 @@ def get_all_search_pages(neighbourhoods):
     return all_search_pages
 
 
-def get_all_offers(search_pages, type_of_offer):
+def get_all_offers(search_pages):
     offers = pd.DataFrame()
 
     for p in tqdm(search_pages):
@@ -82,6 +82,7 @@ def get_all_offers(search_pages, type_of_offer):
                 place = tds[2].a.text.replace('град София,', '')
                 area = tds[5].text.replace(' кв.м', '')
                 price = tds[3].text.strip()
+                price_orig = tds[3].text.strip()
 
                 price = re.search('([\d\s]+)', price).group(1).replace(' ', '') if re.search('([\d\s]+)', price) else '0'
                 if 'Цена при запитване' in price_orig:
@@ -111,7 +112,7 @@ def get_all_offers(search_pages, type_of_offer):
                                         'agency': agency}, ignore_index=True)
 
             except Exception as e:
-                #print(e)
+                print(e)
                 continue
 
     return offers
@@ -119,15 +120,9 @@ def get_all_offers(search_pages, type_of_offer):
 
 def gather_new_articles():
     sale_neighbourhoods = get_neighbourhood_links(sale_url)
-    #rent_neighbourhoods = get_neighbourhood_links(rent_url)
-
     sale_search_pages = get_all_search_pages(sale_neighbourhoods)    
-    #rent_search_pages = get_all_search_pages(rent_neighbourhoods)
-
-    sale_offers = get_all_offers(sale_search_pages, 'sale')
-    sale_offers['is_for_sale'] = True
-    #rent_offers = get_all_offers(rent_search_pages, 'rent')
-    #offers = pd.concat([rent_offers, sale_offers], ignore_index=True)       
+    sale_offers = get_all_offers(sale_search_pages)
+    sale_offers['is_for_sale'] = True      
 
     return sale_offers
 

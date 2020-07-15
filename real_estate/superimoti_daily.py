@@ -33,7 +33,7 @@ def gather_new_articles():
     offers_rent = crawlLinks('rent', page_count_rent)
     offers = pd.concat([offers_rent, offers_sale], ignore_index=True)       
     offers['is_for_sale'] = offers['is_for_sale'].astype(bool)
-
+    
     return offers
 
 
@@ -95,9 +95,9 @@ def crawlLinks(type_of_offering, page_count):
                 offers = offers.append({'link': link,
                                         'label': label,
                                         'type': typ,
+                                        'is_for_sale': is_for_sale,
                                         'title': title,
                                         'id': id,
-                                        'is_for_sale': is_for_sale,
                                         'details': str(details),
                                         'place': place,
                                         'price': price,

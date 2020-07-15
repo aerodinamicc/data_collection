@@ -4,7 +4,6 @@ import boto3
 from datetime import datetime, timedelta
 from io import StringIO
 import time
-from datetime import timedelta
 import logging
 import address_daily
 import arco_daily
@@ -47,6 +46,7 @@ def get_new_offers(site):
 
 def save_file(is_run_locally, sites):
     start = time.time()
+    #import pdb; pdb.set_trace()
 
     for site in sites:
         logging.debug('Scrapping {}'.format(site.upper()))
@@ -68,7 +68,9 @@ def save_file(is_run_locally, sites):
 
         offers = offers[COLUMNS]
 
+        #import pdb; pdb.set_trace()
         if not is_run_locally:
+    
             csv_buffer = StringIO()
             offers.to_csv(csv_buffer, sep='\t', encoding='utf-16', index=False)
             logging.debug(site + ' has ' + str(offers.shape[0]) + ' offers.\n')
