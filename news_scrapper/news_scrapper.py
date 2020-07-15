@@ -3,6 +3,7 @@ import boto3
 from datetime import datetime, timedelta
 from io import StringIO
 import os
+import time
 import logging
 import site1
 import site2
@@ -16,25 +17,27 @@ import site9
 
 def get_new_articles(site):
     articles = None
-    
-    if site == 'vesti.bg': 
-        articles = site1.gather_new_articles('https://www.vesti.bg')
-    elif site == 'news.bg':
-        articles = site2.gather_new_articles('https://news.bg/')
-    elif site == 'blitz.bg':
-        articles = site3.gather_new_articles('https://blitz.bg')
-    elif site == 'dir.bg':
-        articles = site4.gather_new_articles('https://dir.bg/')
-    elif site == '24chasa.bg':
-        articles = site5.gather_new_articles('https://www.24chasa.bg')
-    elif site == 'nova.bg':
-        articles = site6.gather_new_articles('https://nova.bg/news')
-    elif site == 'fakti.bg': 
-        articles = site7.gather_new_articles('https://fakti.bg')
-    elif site == 'dnevnik.bg': 
-        articles = site8.gather_new_articles('https://www.dnevnik.bg')
-    elif site == 'sportal.bg': 
-        articles = site9.gather_new_articles('https://www.sportal.bg/')
+    try:
+        if site == 'vesti.bg': 
+            articles = site1.gather_new_articles('https://www.vesti.bg')
+        elif site == 'news.bg':
+            articles = site2.gather_new_articles('https://news.bg/')
+        elif site == 'blitz.bg':
+            articles = site3.gather_new_articles('https://blitz.bg')
+        elif site == 'dir.bg':
+            articles = site4.gather_new_articles('https://dir.bg/')
+        elif site == '24chasa.bg':
+            articles = site5.gather_new_articles('https://www.24chasa.bg')
+        elif site == 'nova.bg':
+            articles = site6.gather_new_articles('https://nova.bg/news')
+        elif site == 'fakti.bg': 
+            articles = site7.gather_new_articles('https://fakti.bg')
+        elif site == 'dnevnik.bg': 
+            articles = site8.gather_new_articles('https://www.dnevnik.bg')
+        elif site == 'sportal.bg': 
+            articles = site9.gather_new_articles('https://www.sportal.bg/')
+    except:
+        return None
     
     return articles
     
@@ -60,6 +63,8 @@ def save_file(is_run_locally):
         file_name = site + '_' + now_date + '_' + now_hour + 'h.tsv'
 
         articles = get_new_articles(site)
+        if articles is None:
+            continue
         #articles.rename(columns={'date': 'created_timestamp'}, inplace=True)
         articles['visited_timestamp'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 

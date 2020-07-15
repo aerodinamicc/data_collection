@@ -12,7 +12,8 @@ def gather_new_articles(site):
     request = requests.get(site)
     soup = bs4.BeautifulSoup(request.text, 'html')
     
-    all_articles = set([art['href'] for art in soup.findAll('a', href=re.compile('^' + site + '.*' + '[\d]{7}$'))])
+    arts = soup.findAll('a', href=re.compile('^' + site + '.*' + '[\d]{7}$'))
+    all_articles = set([(art['href'], re.search('gtm-(.*)-click', art['class'][0]).group(1)) for art in arts])
     articles = crawlLinks(all_articles)
 
     return articles
@@ -21,7 +22,7 @@ def gather_new_articles(site):
 def crawlLinks(links):
     articlesContent = pd.DataFrame()
 
-    for link in list(links):
+    for link, section in list(links):
         try:
             rq = requests.get(link)
             if rq.status_code == 200:
@@ -47,6 +48,7 @@ def crawlLinks(links):
                 tags = ' - '.join([clean_text(tag.text) for tag in tags[0].select('a')]) if tags is not None else None
                 
                 articlesContent = articlesContent.append({'link': link,
+                                                          'section': section,
                                                           'comments': clean_text(comments),
                                                           'title': clean_text(articleTitle),
                                                           'subtitle': clean_text(articleSubtitle),
