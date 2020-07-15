@@ -36,7 +36,7 @@ def get_neighbourhood_links():
 def gather_new_articles():
     neighbourhoods = get_neighbourhood_links()
     offers = crawlLinks(neighbourhoods)   
-    offers['is_for_sale'] = offers['link'].apply(lambda x: 'link' in x)     
+    offers['is_for_sale'] = offers['link'].apply(lambda x: 'rent' in x)     
 
     return offers
 
