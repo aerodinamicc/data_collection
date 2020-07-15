@@ -19,14 +19,9 @@ def get_page_count(page):
     return max_page
 
 
-def gather_new_articles(current_date):
+def gather_new_articles():
     offers = crawlLinks() 
-    offers = offers[['link', 'id', 'type', 'details', 'available_from', 'city', 'place', 'price', 'area', 'company']]
-    import pdb; pdb.set_trace()
-									   
-    if not os.path.exists('output'):
-        os.mkdir('output')
-    offers.to_csv('output/' + offers_file + current_date + '.tsv', sep='\t', index=False)
+    offers['is_for_sale'] = False
 
     return offers
 
@@ -34,23 +29,13 @@ def gather_new_articles(current_date):
 def crawlLinks():
     offers = pd.DataFrame()
     for city in cities:
-        #resp = requests.get(search_url.format(city, str(1)))
-        #page = bs4.BeautifulSoup(resp.text, 'html')
-        #page_count = get_page_count(page_sale)
-        with open('C:/Users/shadow/Downloads/vuokraovi_results.html', 'r', encoding='utf-8') as f:
-                resp = f.read()
-
-        page = bs4.BeautifulSoup(resp, 'html')
-
+        resp = requests.get(search_url.format(city, str(1)))
+        page = bs4.BeautifulSoup(resp.text, 'html')
         page_count = get_page_count(page)
 
-        for page_n in tqdm(range(1, 2)): # page_count + 1)):
-            #resp = requests.get(search_url.format(type_of_offering, str(page_n)))
-            #page = bs4.BeautifulSoup(resp.text, 'html')
-            with open('C:/Users/shadow/Downloads/vuokraovi_results.html', 'r', encoding='utf-8') as f:
-                resp = f.read()
-
-            page = bs4.BeautifulSoup(resp, 'html')
+        for page_n in tqdm(range(1, page_count + 1)):
+            resp = requests.get(search_url.format(city, str(page_n)))
+            page = bs4.BeautifulSoup(resp.text, 'html')
 
             boxes = page.findAll('div', attrs={'class': 'list-item-container'})
             for b in boxes:
@@ -58,19 +43,23 @@ def crawlLinks():
                     link = b.find('a', attrs={'class': 'list-item-link'})['href']
                     # rental-apartment/espoo/suurpelto/block+of+flats/722129?entryPoint=fromSearch&rentalIndex=1
                     id = re.search('([\d]+?)\?', link).group(1) if re.search('([\d]+?)\?', link) is not None else ''
-                    available_from =  clean_text(b.find('span', attrs={'class': 'showing-lease-container'}).li.text)
-                    address =  clean_text(b.find('span', attrs={'class': 'address'}).text)
+                    available_from =  clean_text(b.find('span', attrs={'class': 'showing-lease-container'}).li.text) if len(b.find('span', attrs={'class': 'showing-lease-container'}).findAll('li')) > 0  else ''
+                    address =  clean_text(b.find('span', attrs={'class': 'address'}).text) if len(b.findAll('span', attrs={'class': 'address'})) > 0 else ''
 
                     meta = b.find('ul', attrs={'class': 'list-unstyled'})
-                    price = clean_text(meta.find('span', attrs={'class': 'price'}).text)
-                    typ_and_area = meta.findAll('li')[0].text
-                    typ = typ_and_area.split(',')[0].strip()
-                    area = typ_and_area.split(',')[1].replace('m²', '').strip()
-                    details = meta.findAll('li')[1].text.strip()
+                    price = clean_text(meta.find('span', attrs={'class': 'price'}).text) if len(b.findAll('span', attrs={'class': 'price'})) > 0 else '0'
+                    price = re.search('([\d ]+)(?:[\d,]+)? €\/kk$', price).group(1).replace(' ', '') if re.search('([\d ]+)(?:[\d,]+)? €\/kk$', price) is not None else '0'
+                    typ_and_area = meta.find('li').text if len(meta.findAll('li')) > 0 else ''
+                    typ = typ_and_area.split(',')[0].strip() if len(typ_and_area) > 0 else ''
+                    area = typ_and_area.split(',')[1].replace('m²', '').strip() if len(typ_and_area) > 0 else ''
+                    details = meta.findAll('li')[1].text.strip() if len(meta.findAll('li')) > 1 else ''
+                    '''
                     company = b.find('div', attrs={'class': 'hidden-xs col-sm-3 col-4'}).a.img['alt'] if \
-                        len(b.findAll('div', attrs={'class': 'hidden-xs col-sm-3 col-4'})) > 0 else ''
+                        len(b.findAll('div', attrs={'class': 'hidden-xs col-sm-3 col-4'})) > 0 \
+                        and len(b.find('div', attrs={'class': 'hidden-xs col-sm-3 col-4'}).findAll('a')) > 0 else ''
+                    '''
 
-                    offers = offers.append({'link': link,
+                    offers = offers.append({'link': base_url + link,
                                             'id': id,
                                             'available_from': available_from,
                                             'details': details,
@@ -78,8 +67,8 @@ def crawlLinks():
                                             'city': city,
                                             'place': address,
                                             'price': price,
-                                            'area': area,
-                                            'company': company}, ignore_index=True)
+                                            #'company': company,
+                                            'area': area}, ignore_index=True)
 
                 except Exception as e:
                     print(e)
@@ -89,5 +78,4 @@ def crawlLinks():
 
 
 if __name__ == '__main__':
-	current_date = str(datetime.now().date())
-	gather_new_articles(current_date)
+	gather_new_articles()

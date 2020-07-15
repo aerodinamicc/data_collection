@@ -9,6 +9,7 @@ from helpers import clean_text, replace_month_with_digit, months
 import time
 from selenium import webdriver
 from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.chrome.options import Options
 from datetime import datetime
 
 
@@ -19,7 +20,9 @@ offers_file = "yavlena_"
 
 
 def get_neighbourhood_links():
-    browser = webdriver.Chrome(ChromeDriverManager().install())
+    options = Options()
+    options.headless = True
+    browser = webdriver.Chrome(ChromeDriverManager().install(), options=options)
     browser.get(base_search_url.format(''))
     page = bs4.BeautifulSoup(browser.page_source, 'html')
     neighbourhoods  = page.findAll('input', attrs={'name': 'quarters', 'type':'checkbox'})
@@ -30,21 +33,18 @@ def get_neighbourhood_links():
     return neighbourhoods
 
 
-def gather_new_articles(current_date):
+def gather_new_articles():
     neighbourhoods = get_neighbourhood_links()
-
     offers = crawlLinks(neighbourhoods)            
-    offers = offers[['link', 'type', 'extras', 'place', 'lon', 'lat', 'price', 'area', 'description']]											   
-    if not os.path.exists('output'):
-        os.mkdir('output')
-    offers.to_csv('output/' + offers_file + current_date + '.tsv', sep='\t', index=False)
 
     return offers
 
 
 def crawlLinks(neighbourhoods):
     offers = pd.DataFrame()
-    browser = webdriver.Chrome(ChromeDriverManager().install())
+    options = Options()
+    options.headless = True
+    browser = webdriver.Chrome(ChromeDriverManager().install(), chrome_options=options)
 
     for nbhd, nbhd_link in tqdm(neighbourhoods):
         browser.get(nbhd_link)
@@ -64,15 +64,17 @@ def crawlLinks(neighbourhoods):
 
         for b in boxes:
             try:
-                price = b.select('.price-label')[0].text.replace('&nbsp;', '').replace('\xa0', '') if len(b.select('.price-label')) > 0 else 0
+                price = b.select('.price-label')[0].text.replace('&nbsp;', '').replace('\xa0', '').replace('€', '').strip() if len(b.select('.price-label')) > 0 and len(b.select('.price-label')[0].text) > 0 else '0'
                 desc = b.select('.full-text')[0].text.replace('\n', '').replace('\t', '') if len(b.select('.full-text')) > 0 else 0
                 tbody = b.findAll('tbody')[0]
                 is_selling = tbody.findAll('tr')[0].findAll('td')[0].h3.text
                 type_ = tbody.findAll('tr')[0].findAll('td')[1].h3.text
                 link = tbody.findAll('tr')[0].findAll('td')[1].h3.a['href']
+                id = re.search('\/([^\/]+)(?:\/rent)?$', link).group(1) if re.search('\/([^\/]+)(?:\/rent)?$', link) is not None else '0'
                 lat = tbody.findAll('tr')[1].findAll('td')[0].a['data-map-lat']
                 lng = tbody.findAll('tr')[1].findAll('td')[0].a['data-map-lng']
                 area = tbody.findAll('tr')[2].findAll('td')[0].text.replace('кв.м.', '').strip()
+                is_for_sale = 'rent' in link
 
                 extras = {}
                 exs = b.select('.extras')[0]
@@ -86,9 +88,11 @@ def crawlLinks(neighbourhoods):
                         extras[spans[1]['title']] = spans[0].text
 
                 offers = offers.append({'link': base_url + link,
+                                        'id': id,
                                         'type': type_,
-                                        'extras': str(extras),
+                                        'details': str(extras),
                                         'place': nbhd,
+                                        'is_for_sale': is_for_sale,
                                         'lon': lng,
                                         'lat': lat,
                                         'price': price,
@@ -105,5 +109,4 @@ def crawlLinks(neighbourhoods):
 
 
 if __name__ == '__main__':
-	current_date = str(datetime.now().date())
-	gather_new_articles(current_date)
+	gather_new_articles()

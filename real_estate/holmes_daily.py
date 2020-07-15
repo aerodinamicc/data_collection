@@ -15,7 +15,6 @@ from datetime import datetime
 
 sale_url = 'http://sofia.holmes.bg'
 rent_url = 'http://naemi-sofia.holmes.bg/'
-
 offers_daily = "holmes_daily_"
 
 
@@ -25,7 +24,7 @@ def get_neighbourhood_links(url):
     resp = requests.get(url)
     page = bs4.BeautifulSoup(resp.content.decode('cp1251'), 'html')
     neighbourhoods = page.findAll('a',
-                                  href=re.compile('http://sofia\.holmes\.bg/pcgi/home\.cgi.*f4=град(?:\s)?София.*f5=[А-Яа-я0-9\s]+'),
+                                  href=re.compile('sofia\.holmes\.bg/pcgi/home\.cgi.*f4=град(?:\s)?София.*f5=[А-Яа-я0-9\s]+'),
                                   # text=re.compile('[\d]+'),
                                   attrs={'class': 'linkSearch'})
     neighbourhoods = [re.search('&f5=(.*)$', i['href']).group(1) for i in neighbourhoods]
@@ -33,8 +32,9 @@ def get_neighbourhood_links(url):
     return neighbourhoods
 
 
-def get_all_search_pages(neighbourhoods, current_date):
-    for n in neighbourhoods:
+def get_all_search_pages(neighbourhoods):
+    all_search_pages = []
+    for n in tqdm(neighbourhoods):
         pages = set([1])
         last_page = False
         page_link = n[1]
@@ -43,10 +43,10 @@ def get_all_search_pages(neighbourhoods, current_date):
             resp = requests.get(page_link)
             page = bs4.BeautifulSoup(resp.content.decode('cp1251'), 'html')
 
-            visible_pages = page.findAll('a', href=re.compile('http://sofia\.holmes\.bg/pcgi/home\.cgi.*f6='), text=re.compile('[\d]+'), attrs={'class': 'pageNumbers'})
+            visible_pages = page.findAll('a', href=re.compile('sofia\.holmes\.bg/pcgi/home\.cgi.*f6='), text=re.compile('[\d]+'), attrs={'class': 'pageNumbers'})
             visible_pages = [int(i.text) for i in visible_pages]
 
-            next_page = page.findAll('a', href=re.compile('http://sofia\.holmes\.bg/pcgi/home\.cgi.*f6='), text=re.compile('^(?![\d]+)'), attrs={'class': 'pageNumbers'})
+            next_page = page.findAll('a', href=re.compile('sofia\.holmes\.bg/pcgi/home\.cgi.*f6='), text=re.compile('^(?![\d]+)'), attrs={'class': 'pageNumbers'})
             href = next_page[0]['href'] if len(next_page) > 0 else None
             page_number = int(re.search('([\d]+)$', href).group(1)) if href is not None else None
 
@@ -59,17 +59,16 @@ def get_all_search_pages(neighbourhoods, current_date):
             pages.update(set(visible_pages))
 
         search_pages = [n[1] + '&f6={}'.format(p) for p in pages]
+        all_search_pages = all_search_pages + search_pages
 
-        return search_pages
+    return all_search_pages
 
 
-def get_all_offers(search_pages):
+def get_all_offers(search_pages, type_of_offer):
     offers = pd.DataFrame()
 
-    for p in search_pages:
-        #with open('C:/Users/shadow/Downloads/holmes_results.html', 'r', encoding='cp1251') as f:
-        #    resp = f.read()
-        
+    for p in tqdm(search_pages):
+        #import pdb; pdb.set_trace()
         resp = requests.get(p)
         page = bs4.BeautifulSoup(resp.content.decode('cp1251'), 'html')
 
@@ -80,53 +79,58 @@ def get_all_offers(search_pages):
                 tds = b.findAll('td')
                 link = tds[2].a['href']
                 id = re.search('adv=(.*)$', link).group(1)
-                place = tds[2].a.text
-                price = tds[3].text
-                if 'EUR' in price:
-                    price = price.replace('EUR', '').replace(' ', '')
-                    currency = 'EUR'
-                elif 'лв.' in price.lower():
-                    price = str(round(float(price.replace('лв.', '').replace(' ', '')) / 1.9558))
-                    currency = 'BGN'
-
-                typ = tds[4].text
+                place = tds[2].a.text.replace('град София,', '')
                 area = tds[5].text.replace(' кв.м', '')
+                price = tds[3].text.strip()
+
+                price = re.search('([\d\s]+)', price).group(1).replace(' ', '') if re.search('([\d\s]+)', price) else '0'
+                if 'Цена при запитване' in price_orig:
+                    price = '0'
+                elif 'eur' in price_orig.lower():
+                    currency = 'EUR'
+                elif 'лв' in price_orig.lower():
+                    price = str(round(float(price) / 1.9558)) if price != '0' else '0'
+                    currency = 'BGN'
+                
+                if 'на кв.м' in price_orig:
+                    #print('\n{} * {} = {}'.format(float(price), float(area), round(float(price) * float(area), 0)))
+                    price = round(float(price) * float(area), 0)
+                
+                typ = tds[4].text
                 desc = tds[7].text
                 agency = tds[8].a['href'] if len(tds[8].findAll('a')) > 0 else ''
 
-                offers = offers.append({'link': link,
+                offers = offers.append({'link': sale_url + link,
                                         'id': id,
                                         'type': typ,
-                                        'place': place.replace('град София,', ''),
+                                        'place': place,
                                         'price': price,
                                         'area': area,
                                         'description': desc,
+                                        'currency':currency,
                                         'agency': agency}, ignore_index=True)
 
             except Exception as e:
-                print(e)
+                #print(e)
                 continue
 
     return offers
 
 
-def gather_new_articles(current_date):
-    if not os.path.exists('output'):
-        os.mkdir('output')
-    
+def gather_new_articles():
     sale_neighbourhoods = get_neighbourhood_links(sale_url)
-    rent_neighbourhoods = get_neighbourhood_links(rent_url)
+    #rent_neighbourhoods = get_neighbourhood_links(rent_url)
 
-    sale_search_pages = get_all_search_pages(sale_neighbourhoods, current_date)    
-    rent_search_pages = get_all_search_pages(rent_neighbourhoods, current_date)
+    sale_search_pages = get_all_search_pages(sale_neighbourhoods)    
+    #rent_search_pages = get_all_search_pages(rent_neighbourhoods)
 
-    offers = get_all_offers(sale_search_pages + rent_search_pages)
-    offers = offers[['id', 'type', 'place', 'price', 'area', 'agency', 'link', 'description']]
-    offers.to_csv('output/' + offers_daily + current_date + '.tsv', sep='\t', index=False)
+    sale_offers = get_all_offers(sale_search_pages, 'sale')
+    sale_offers['is_for_sale'] = True
+    #rent_offers = get_all_offers(rent_search_pages, 'rent')
+    #offers = pd.concat([rent_offers, sale_offers], ignore_index=True)       
 
-    return offers
+    return sale_offers
 
 
 if __name__ == '__main__':
-	current_date = str(datetime.now().date())
-	gather_new_articles(current_date)
+	gather_new_articles()
