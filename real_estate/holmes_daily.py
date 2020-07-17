@@ -77,12 +77,12 @@ def get_all_offers(search_pages):
         for b in boxes:
             try:
                 tds = b.findAll('td')
-                link = tds[2].a['href']
+                link = tds[2].a['href'] if len(tds) > 2 else ''
                 id = re.search('adv=(.*)$', link).group(1)
-                place = tds[2].a.text.replace('град София,', '')
-                area = tds[5].text.replace(' кв.м', '')
-                price = tds[3].text.strip()
-                price_orig = tds[3].text.strip()
+                place = tds[2].a.text.replace('град София,', '') if len(tds) > 2 else ''
+                area = tds[5].text.replace(' кв.м', '') if len(tds) > 5 else ''
+                price = tds[3].text.strip() if len(tds) > 3 else ''
+                price_orig = tds[3].text.strip() if len(tds) > 3 else ''
 
                 price = re.search('([\d\s]+)', price).group(1).replace(' ', '') if re.search('([\d\s]+)', price) else '0'
                 if 'Цена при запитване' in price_orig:
@@ -97,9 +97,9 @@ def get_all_offers(search_pages):
                     #print('\n{} * {} = {}'.format(float(price), float(area), round(float(price) * float(area), 0)))
                     price = round(float(price) * float(area), 0)
                 
-                typ = tds[4].text
-                desc = tds[7].text
-                agency = tds[8].a['href'] if len(tds[8].findAll('a')) > 0 else ''
+                typ = tds[4].text if len(tds) > 4 else ''
+                desc = tds[7].text if len(tds) > 7 else ''
+                agency = tds[8].a['href'] if len(tds) > 8 and len(tds[8].findAll('a')) > 0 else ''
 
                 offers = offers.append({'link': sale_url + link,
                                         'id': id,
@@ -112,8 +112,9 @@ def get_all_offers(search_pages):
                                         'agency': agency}, ignore_index=True)
 
             except Exception as e:
+                #import pdb; set_trace()
                 print(e)
-                continue
+                
 
     return offers
 

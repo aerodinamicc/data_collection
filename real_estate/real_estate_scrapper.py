@@ -15,7 +15,7 @@ import vuokraovi_daily
 import yavlena_daily
     
 
-COLUMNS = ['link', 'id', 'type', 'city', 'place', 'is_for_sale', 'price', 'area', 'details', 'labels', 'year', 'available_from', 'views', 'lon', 'lat']
+COLUMNS = ['link', 'id', 'type', 'city', 'place', 'is_for_sale', 'price', 'area', 'details', 'labels', 'year', 'available_from', 'views', 'lon', 'lat', 'measurement_day']
 DESTINATION_BUCKET = 'real-estate-scrapping'
 
 
@@ -46,9 +46,9 @@ def get_new_offers(site):
 
 def save_file(is_run_locally, sites):
     start = time.time()
-    #import pdb; pdb.set_trace()
 
     for site in sites:
+        #import pdb; pdb.set_trace()
         logging.debug('Scrapping {}'.format(site.upper()))
         # not UTC but EET
         now = datetime.now()

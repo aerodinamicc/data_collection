@@ -15,7 +15,7 @@ months = {
 
 
 def clean_text(text):
-    return text.replace('\n', ' ').replace('\r', ' ').replace('\t', ' ').replace('\\xa0', ' ').replace('"', "'").replace('„', "'").replace('“', "'").strip()
+    return text.replace('\n', ' ').replace('\r', ' ').replace('\t', ' ').replace('\\xa0', ' ').replace('\xa0', ' ').replace('"', "'").replace('„', "'").replace('“', "'").strip()
 
 
 def replace_month_with_digit(month_name):
