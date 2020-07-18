@@ -33,7 +33,7 @@ def get_neighbourhood_links():
 
 
 def get_all_links_for_each_neighbourhood(neighbourhoods, current_date):
-    links = pd.DataFrame()
+    links = []
 
     for n in neighbourhoods:
         pages = set([1])
@@ -60,13 +60,15 @@ def get_all_links_for_each_neighbourhood(neighbourhoods, current_date):
             pages.update(set(visible_pages))
 
         search_pages = [n[1] + '&f6={}'.format(p) for p in pages]
+        #import pdb; pdb.set_trace()
+
         for p in search_pages:
             resp = requests.get(p)
             page = bs4.BeautifulSoup(resp.content.decode('cp1251'), 'html')
 
             visible_links = page.findAll('a', href=re.compile('/pcgi/home\.cgi.*act=3.*adv=[\w\d]+$'), attrs={'class': 'linkLocatList'})
             visible_links = [(base_url + i['href'], n[0]) for i in visible_links]
-            links.update(set(visible_links))
+            links = links + visible_links
 
         print('{}: {}'.format(n[0], len(search_pages)))
 
@@ -80,13 +82,14 @@ def get_all_links_for_each_neighbourhood(neighbourhoods, current_date):
 
 
 def gather_new_articles(current_date):
-    if os.path.exists(links_file + current_date + '.tsv'):
-        links = list(pd.read_csv(links_file + current_date + '.tsv', sep='\t')['link'].values)
-        nbbhds = list(pd.read_csv(links_file + current_date + '.tsv', sep='\t')['neighbourhood'].values)
+    if os.path.exists('output/' + links_file + current_date + '.tsv'):
+        links = list(pd.read_csv('output/' + links_file + current_date + '.tsv', sep='\t')['link'].values)
+        nbbhds = list(pd.read_csv('output/' + links_file + current_date + '.tsv', sep='\t')['neighbourhood'].values)
     else:
         neighbourhoods = get_neighbourhood_links()
         links, nbbhds = get_all_links_for_each_neighbourhood(neighbourhoods, current_date)
 
+    #import pdb; pdb.set_trace()
     offers = crawlLinks(links, nbbhds, current_date)
     offers = offers[['link', 'title', 'address', 'details', 'neighbourhood', 'lon', 'lat', 'id', 'price', 'price_sqm', 'area', 'floor', 'description', 'views', 'date', 'agency', 'poly']]											   
     offers.to_csv('output/' + offers_file + current_date + '.tsv', sep='\t', index=False)
