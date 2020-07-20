@@ -38,25 +38,25 @@ def crawlLinks(links):
             if rq.status_code == 200:
                 page = bs4.BeautifulSoup(rq.text, 'html')
 
-                headline = page.select('h1')[0].text
+                headline = page.select('h1')[0].text if len(page.select('h1')) > 0 else ''
                 author = page.select('.author')
                 author = author[0].select('a')[0].text if author is not None else None
 
                 # 30.12.2019 13:02:31
-                articleDate = clean_text(page.select('.article-info')[0].select('p')[0].text)
-                articleDate = pd.to_datetime(articleDate, format='%d.%m.%Y %H:%M:%S')
+                articleDate = clean_text(page.select('.article-info')[0].select('p')[0].text) if len(page.select('.article-info')) > 0 else ''
+                articleDate = pd.to_datetime(articleDate, format='%d.%m.%Y %H:%M:%S') if articleDate != '' else ''
 
-                views = page.select('.article-info')[0].div.p.text
-                views = views.split(" ")[1]
-                comments = page.select('.comments')[0].span.text
+                views = page.select('.article-info')[0].div.p.text if len(page.select('.article-info')) > 0 else ''
+                views = views.split(" ")[1] if views != '' else ''
+                comments = page.select('.comments')[0].span.text if len(page.select('.comments')) > 0 else ''
                 tags = ' - '.join([clean_text(tag.text) for tag in page.select('.tags')[0].select('a') if tag != ',' and tag != "\n"])\
-                    if len(page.select('.tags')) > 0 else None
+                    if len(page.select('.tags')) > 0 else ''
 
                 article_text = ' '.join([clean_text(par.text) for par in page.select('.article-text')[0].select('p')])
 
-                thumbs = page.select('.rate')[0].select('a')
-                thumbs_up = clean_text(thumbs[0].text)
-                thumbs_down = clean_text(thumbs[1].text)
+                thumbs = page.select('.rate')[0].select('a') if len(page.select('.rate')) else ''
+                thumbs_up = clean_text(thumbs[0].text) if thumbs != '' else ''
+                thumbs_down = clean_text(thumbs[1].text) if thumbs != '' else ''
 
                 articles_content = articles_content.append({'link': link,
                                                             'title': clean_text(headline),

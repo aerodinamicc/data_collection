@@ -32,21 +32,22 @@ def crawlLinks(links):
             if rq.status_code == 200:
                 page = bs4.BeautifulSoup(rq.text, 'html')
 
-                headline = page.select('#news_heading')[0].h1.text.strip()
-                shares = page.select(".social_count")[0].text.strip()
-                comments = page.select('.comments')[0].text.strip()
-                views = page.select('.btn_reads')[0].text.split('Прочетена')[1].strip()
-                article_text = clean_text(page.select('#news_content')[0].text)
+                headline = page.select('#news_heading')[0].h1.text.strip() if len(page.select('#news_heading')) > 0 else ''
+                shares = page.select(".social_count")[0].text.strip() if len(page.select(".social_count")) > 0 else ''
+                comments = page.select('.comments')[0].text.strip() if len(page.select('.comments')) else ''
+                views = page.select('.btn_reads')[0].text.split('Прочетена')[1].strip() if len(page.select('.btn_reads')) > 0 else ''
+                article_text = clean_text(page.select('#news_content')[0].text) if len(page.select('#news_content')) > 0 else ''
 
                 # 01 януари 2020 | 16:26 - Обновена
-                articleDate = page.select('#news_heading')[0].span.text.split('- Обновена')[0].strip()
-                month_name = re.search('([а-яА-Я]+)', articleDate)
-                month_name = month_name.group(1) if month_name is not None else None
-                articleDate = articleDate.replace(month_name, replace_month_with_digit(
-                    month_name)) if month_name is not None else articleDate
-                articleDate = pd.to_datetime(articleDate, format='%d %m %Y | %H:%M')
+                articleDate = page.select('#news_heading')[0].span.text.split('- Обновена')[0].strip() if len(page.select('#news_heading')) > 0 else ''
+                if articleDate != '':
+                    month_name = re.search('([а-яА-Я]+)', articleDate)
+                    month_name = month_name.group(1) if month_name is not None else None
+                    articleDate = articleDate.replace(month_name, replace_month_with_digit(
+                        month_name)) if month_name is not None else articleDate
+                    articleDate = pd.to_datetime(articleDate, format='%d %m %Y | %H:%M')
 
-                author = page.select('#author_box')[0].select('h5')[0].a.text
+                author = page.select('#author_box')[0].select('h5')[0].a.text if len(page.select('#author_box')) > 0 else ''
                 
                 articles_content = articles_content.append({'link': link,
                                                             'title': clean_text(headline),

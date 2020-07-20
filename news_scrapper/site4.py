@@ -37,22 +37,23 @@ def crawlLinks(links):
                 titles = page.select('.text-wrapper')[0]
                 headline = titles.h2.text
                 subtitle = page.select('.text-wrapper')[0].p.text
-                meta = page.select('.additional-info')[0]
-                date_author_info = clean_text(meta.select('.timestamp')[0].text)
+                meta = page.select('.additional-info')[0] if len(page.select('.additional-info')) > 0 else ''
+                date_author_info = clean_text(meta.select('.timestamp')[0].text) if len(meta.select('.timestamp')) > 0 else '' 
                 author = re.search(':([А-Яа-я\s]+$)', date_author_info)
                 author = author.group(1).strip() if author is not None else None
 
                 # 10:21                   27 декември 2019
-                articleDate = ' '.join(date_author_info.split('|')[0:2]).strip()
-                month_name = re.search('([а-яА-Я]+)', articleDate)
-                month_name = month_name.group(1) if month_name is not None else None
-                articleDate = articleDate.replace(month_name, replace_month_with_digit(month_name)) \
-                    if month_name is not None else articleDate
-                articleDate = pd.to_datetime(articleDate, format='%H:%M                   %d %m %Y')
+                articleDate = ' '.join(date_author_info.split('|')[0:2]).strip() if date_author_info != '' else ''
+                if articleDate != '':
+                    month_name = re.search('([а-яА-Я]+)', articleDate)
+                    month_name = month_name.group(1) if month_name is not None else None
+                    articleDate = articleDate.replace(month_name, replace_month_with_digit(month_name)) \
+                        if month_name is not None else articleDate
+                    articleDate = pd.to_datetime(articleDate, format='%H:%M                   %d %m %Y')
 
-                views = meta.select('#articleViews')[0].text
-                comments = meta.select('.comments')[0].text
-                article_text = ' '.join([par.text.strip() for par in page.select('.article-body')[0].select('p')])
+                views = meta.select('#articleViews')[0].text if len(meta.select('#articleViews')) > 0 else ''
+                comments = meta.select('.comments')[0].text if len(meta.select('.comments')) > 0 else ''
+                article_text = ' '.join([par.text.strip() for par in page.select('.article-body')[0].select('p')]) if len(page.select('.article-body')) > 0 else ''
 
                 """
                 window._io_config=window._io_config||{};window._io_config["0.2.0"]=window._io_config["0.2.0"]||[];window._io_config["0.2.0"].push({"page_url":"https:\/\/dnes.dir.bg\/temida\/vks-i-da-otkradnat-kolata-tryabva-da-si-plashtash-lizinga"

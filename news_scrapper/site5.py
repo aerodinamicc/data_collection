@@ -34,19 +34,20 @@ def crawlLinks(links):
                 # Вижте 50-те най-четени мнения в сайта ни за годината
                 if headline == '':
                     continue
-                info = clean_text(meta.select('.article-date')[0].text.split('(')[0])
+                info = clean_text(meta.select('.article-date')[0].text.split('(')[0]) if len(meta.select('.article-date')) > 0 else ''
 
                 # 30.12.2019 10:33
-                articleDate = info.split(';')[0]
-                month_name = re.search('([а-яА-Я]+)', articleDate)
-                month_name = month_name.group(1) if month_name is not None else None
-                articleDate = articleDate.replace(month_name, replace_month_with_digit(
-                    month_name)) if month_name is not None else articleDate
-                articleDate = pd.to_datetime(articleDate, format='%d.%m.%Y  %H:%M')
+                articleDate = info.split(';')[0] if info != '' else ''
+                if articleDate != '':
+                    month_name = re.search('([а-яА-Я]+)', articleDate)
+                    month_name = month_name.group(1) if month_name is not None else None
+                    articleDate = articleDate.replace(month_name, replace_month_with_digit(
+                        month_name)) if month_name is not None else articleDate
+                    articleDate = pd.to_datetime(articleDate, format='%d.%m.%Y  %H:%M')
 
                 author = info.split(';')[1] if ';' in info else None
                 views = requests.get('https://www.24chasa.bg/Article/{id}/4'.format(id=re.search('(\d+)$', link).group(1))).text
-                article_text = ' '.join([clean_text(par.text) for par in page.select('.content')[0].select('p')]).split('Tweet')[0]
+                article_text = ' '.join([clean_text(par.text) for par in page.select('.content')[0].select('p')]).split('Tweet')[0] if len(page.select('.content')) > 0 else ''
 
                 # shares - will need selenium for that
                 # shares = page.select('.inlineBlock')[1].select('.span')[-1].text

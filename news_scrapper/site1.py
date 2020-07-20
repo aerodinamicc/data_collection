@@ -28,18 +28,19 @@ def crawlLinks(links):
             if rq.status_code == 200:
                 page = bs4.BeautifulSoup(rq.text, 'html')
                 
-                articleTitle = page.select('h1')[0].text
-                articleSubtitle = page.select('h2.subtitle')[0].text
+                articleTitle = page.select('h1')[0].text if len(page.select('h1')) > 0 else ''
+                articleSubtitle = page.select('h2.subtitle')[0].text if len(page.select('h2.subtitle')) > 0 else ''
 
-                articleDate = page.select('.article-time')[0].text.split(', oбновена')[0]
+                articleDate = page.select('.article-time')[0].text.split(', oбновена')[0] if len(page.select('.article-time')) > 0 else ''
                 articleDate = clean_text(articleDate)
                 month_name = re.search('([а-яА-Я]+)', articleDate)
-                month_name = month_name.group(1) if month_name is not None else None
-                articleDate = articleDate.replace(month_name, replace_month_with_digit(month_name)) if month_name is not None else articleDate
-                articleDate = pd.to_datetime(articleDate, format='%d %m %Y,  %H:%M')
+                if month_name is not None:
+                    month_name = month_name.group(1)
+                    articleDate = articleDate.replace(month_name, replace_month_with_digit(month_name))
+                    articleDate = pd.to_datetime(articleDate, format='%d %m %Y,  %H:%M')
 
-                category = page.select('div.article-category')[0].a.text
-                comments = page.select('.commentsButtonNumber')[0].text
+                category = page.select('div.article-category')[0].a.text if len(page.select('div.article-category')) > 0 else ''
+                comments = page.select('.commentsButtonNumber')[0].text if len(page.select('.commentsButtonNumber')) > 0 else ''
                 article_text = ' '.join(
                     [clean_text(par.text) for par in page.select('.article-text')[0].select('p')])
 

@@ -79,9 +79,9 @@ def save_file(is_run_locally):
             csv_buffer = StringIO()
             articles.to_csv(csv_buffer, sep='\t', encoding='utf-16', index=False)
             logging.debug(site + ' has ' + str(articles.shape[0]) + ' articles.\n')
-            session = boto3.session.Session(profile_name='aero')
+            #session = boto3.session.Session(profile_name='aero')
 
-            s3 = session.resource('s3')
+            s3 = boto3.resource('s3')
             s3.Object(DESTINATION_BUCKET, 'raw/' + site + '/' + now_date + '/' + file_name).put(Body=csv_buffer.getvalue())
         else:
             if not os.path.exists('output'):

@@ -32,7 +32,7 @@ def crawlLinks(links):
 
             if rq.status_code == 200:
                 page = bs4.BeautifulSoup(rq.text, 'html')
-                info = page.select('#news_details')[0]
+                info = page.select('#news_details')[0] if len(page.select('#news_details')) > 0 else ''
 
                 headline = info.h1.text.strip()
                 subtitle = info.h2.text.strip()
@@ -47,14 +47,16 @@ def crawlLinks(links):
                     month_name)) if month_name is not None else articleDate
                 articleDate = pd.to_datetime(articleDate, format='%d %m, %Y %H:%M')
 
-                meta = meta[1].text.strip()
-                comments = re.search('(^\d+)', meta).group(1)
-                views = re.search('(\d+)$', meta).group(1)
-                author = page.select('.linksProfile')[0].text
+                meta = meta[1].text.strip() if len(meta) > 0 else ''
+                if meta != '':
+                    comments = re.search('(^\d+)', meta).group(1)
+                    views = re.search('(\d+)$', meta).group(1)
 
-                article_body = page.select('#news_content')[0].select('p')
+                author = page.select('.linksProfile')[0].text if len(page.select('.linksProfile')) > 0 else ''
+
+                article_body = page.select('#news_content')[0].select('p') if len(page.select('#news_content')) > 0 else ''
                 article_text = ' '.join([clean_text(par.text)
-                                         for par in article_body if '<' not in par.text])
+                                         for par in article_body if '<' not in par.text]) if article_body != '' else ''
                 tags = ' - '.join(
                     [clean_text(tag.text) for tag in page.select('.tags')[0].select('a') if tag != ',' and tag != "\n"]) \
                     if len(page.select('.tags')) > 0 else None

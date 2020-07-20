@@ -31,26 +31,27 @@ def crawlLinks(links):
 
             if rq.status_code == 200:
                 page = bs4.BeautifulSoup(rq.text, 'html')
-                category = page.select('.gtm-ArticleBreadcrumb-click')[0].text
-                headline = page.select('.title-wrap-roboto')[0].h1.text.strip()
+                category = page.select('.gtm-ArticleBreadcrumb-click')[0].text if len(page.select('.gtm-ArticleBreadcrumb-click')) > 0 else ''
+                headline = page.select('.title-wrap-roboto')[0].h1.text.strip() if len(page.select('.title-wrap-roboto')) > 0 else ''
 
                 # Гледайте цялата емисия
                 if headline == '':
                     continue
 
-                subtitle = page.select('.article-sub-title')[0].text.strip()
+                subtitle = page.select('.article-sub-title')[0].text.strip() if len(page.select('.article-sub-title')) > 0 else ''
                 #author = page.select('.author-name')
                 #author = author[0].text if author is not None else None
 
                 # 21 ноември 2019  19:42
-                articleDate = page.select('.date-time')[0].text
-                month_name = re.search('([а-яА-Я]+)', articleDate)
-                month_name = month_name.group(1) if month_name is not None else None
-                articleDate = articleDate.replace(month_name, replace_month_with_digit(
-                    month_name)) if month_name is not None else articleDate
-                articleDate = pd.to_datetime(articleDate, format='%d %m %Y  %H:%M')
+                articleDate = page.select('.date-time')[0].text if len(page.select('.date-time')) > 0 else ''
+                if articleDate != '':
+                    month_name = re.search('([а-яА-Я]+)', articleDate)
+                    month_name = month_name.group(1) if month_name is not None else None
+                    articleDate = articleDate.replace(month_name, replace_month_with_digit(
+                        month_name)) if month_name is not None else articleDate
+                    articleDate = pd.to_datetime(articleDate, format='%d %m %Y  %H:%M')
 
-                article_body = page.select('.article-body')[0].find_all('p', a=False)
+                article_body = page.select('.article-body')[0].find_all('p', a=False) if len(page.select('.article-body')) > 0 else ''
                 article_text = ' '.join([clean_text(par.text)
                                          for par in article_body if 'ГАЛЕРИЯ' not in par and
                                                                     'СНИМКИ' not in par and

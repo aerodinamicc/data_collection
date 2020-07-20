@@ -35,23 +35,28 @@ def crawlLinks(links):
                 page = bs4.BeautifulSoup(rq.text, 'html')
 
                 headline = page.select('.content')[0].h1.text.strip()
-                meta = clean_text(page.select('.article-tools')[0].text)
+                meta = clean_text(page.select('.article-tools')[0].text) if len(page.select('.article-tools')) > 0 else '' 
 
                 # 14:41, 30 дек 19
-                articleDate = re.search('(.*),', meta).group(1)
-                month_name = re.search('([а-яА-Я]+)', articleDate)
-                month_name = month_name.group(1) if month_name is not None else None
-                articleDate = articleDate.replace(month_name, replace_month_with_digit(
-                    month_name)) if month_name is not None else articleDate
-                articleDate = pd.to_datetime(articleDate, format='%H:%M, %d %m %y')
+                articleDate = re.search('(.*),', meta).group(1) if re.search('(.*),', meta) is not None else ''
+                if articleDate != '':
+                    month_name = re.search('([а-яА-Я]+)', articleDate)
+                    month_name = month_name.group(1) if month_name is not None else None
+                    articleDate = articleDate.replace(month_name, replace_month_with_digit(
+                        month_name)) if month_name is not None else articleDate
+                    articleDate = pd.to_datetime(articleDate, format='%H:%M, %d %m %y')
 
-                views = re.search('(\d+)$', meta).group(1)
-                comments = page.select('.comments')[0].text.strip()
-                article_body = page.select('.article-content')[0].select('p')
-                author = article_body[0].text
-                article_text = ' '.join([clean_text(par.text)
-                                         for par in article_body[1:] if '<' not in par.text])
-                article_text = article_text[article_text.find('}') + 1:].strip()
+                views = re.search('(\d+)$', meta).group(1) if re.search('(\d+)$', meta) is not None else ''
+                comments = page.select('.comments')[0].text.strip() if len(page.select('.comments')) > 0 else ''
+                article_body = page.select('.article-content')[0].select('p') if len(page.select('.article-content')) > 0 else ''
+                if article_body != '':
+                    author = article_body[0].text
+                    article_text = ' '.join([clean_text(par.text)
+                                            for par in article_body[1:] if '<' not in par.text])
+                    article_text = article_text[article_text.find('}') + 1:].strip()
+                else:
+                    article_text = ''
+                    author = ''
 
                 tags = ' - '.join(
                     [clean_text(tag.text) for tag in page.select('.tags')[0].select('li') if tag != ',' and tag != "\n"]) \

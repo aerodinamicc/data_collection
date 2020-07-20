@@ -32,39 +32,40 @@ def crawlLinks(links):
 
                 if page.find({'class': 'article-post'}):
                     body = page.select('.article-post')[0]
-                    headline = body.select('h1')[0].text
+                    headline = body.select('h1')[0].text if len(body.select('h1')) else ''
                     subtitle = None
 
                     #metadata
-                    location = body.select('.location')[0].text
-                    articleDate = body.select('.fa-calendar')[0].text
-                    views = body.select('.fa-eye')[0].text
-                    comments = body.select('.fa-comments-o')[0].text
-                    comments = comments.split(" ")[0]
-                    tags = [tag['a'].text for tag in body.select('.tags').select('li')]
+                    location = body.select('.location')[0].text if len(body.select('.location')) else ''
+                    articleDate = body.select('.fa-calendar')[0].text if len(body.select('.fa-calendar')) else ''
+                    views = body.select('.fa-eye')[0].text if len(body.select('.fa-eye')) else ''
+                    comments = body.select('.fa-comments-o')[0].text if len(body.select('.fa-comments-o')) else ''
+                    comments = comments.split(" ")[0] if comments != '' else ''
+                    tags = ' - '.join([tag['a'].text for tag in body.select('.tags').select('li')])
                 else: 
-                    headline = page.select('.post-title')[0].text
-                    subtitle = page.select('.post-subtitle')[0].text
+                    headline = page.select('.post-title')[0].text if len(page.select('.post-title')) else ''
+                    subtitle = page.select('.post-subtitle')[0].text if len(page.select('.post-subtitle')) else ''
 
                     #metadata
-                    simpleShare = page.select('.simple-share')[0]
+                    simpleShare = page.select('.simple-share')[0] if len(page.select('.simple-share')) > 0 else ''
                     li = simpleShare.find_all('li')
-                    location = li[0].text
-                    articleDate = li[1].text
-                    views = li[2].text
-                    views = views.split(" ")[0]
-                    comments = li[3].text
-                    comments = comments.split(" ")[0]
-                    tags = ' - '.join([tag.a.text for tag in page.select('.tags-widget')[0].select('li')[1:]])
+                    location = li[0].text if len(li) > 0 else ''
+                    articleDate = li[1].text if len(li) > 1 else ''
+                    views = li[2].text if len(li) > 2 else ''
+                    views = views.split(" ")[0] if views != '' else ''
+                    comments = li[3].text if len(li) > 3 else ''
+                    comments = comments.split(" ")[0] if comments != '' else ''
+                    tags = ' - '.join([tag.a.text for tag in page.select('.tags-widget')[0].select('li')[1:]]) if len(page.select('.tags-widget')) > 0 else ''
 
                 # 30 Дек. 2019, 16:13
-                month_name = re.search('([а-яА-Я]+)', articleDate)
-                month_name = month_name.group(1) if month_name is not None else None
-                articleDate = articleDate.replace(month_name, replace_month_with_digit(month_name)) \
-                    if month_name is not None else articleDate
-                articleDate = pd.to_datetime(articleDate, format='%d %m %Y,  %H:%M')
+                if articleDate != '':
+                    month_name = re.search('([а-яА-Я]+)', articleDate)
+                    if month_name is not None:
+                        month_name = month_name.group(1)
+                        articleDate = articleDate.replace(month_name, replace_month_with_digit(month_name))
+                        articleDate = pd.to_datetime(articleDate, format='%d %m %Y,  %H:%M')
 
-                article_text = clean_text(page.select('.post-content')[0].select('div')[2].text)
+                article_text = clean_text(page.select('.post-content')[0].select('div')[2].text) if len(page.select('.post-content')) > 0 else ''
 
                 articlesContent = articlesContent.append({'link': link,
                                                           'title': clean_text(headline),
