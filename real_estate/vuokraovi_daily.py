@@ -59,7 +59,7 @@ def crawlLinks():
                         and len(b.find('div', attrs={'class': 'hidden-xs col-sm-3 col-4'}).findAll('a')) > 0 else ''
                     '''
 
-                    offers = offers.append({'link': base_url + link,
+                    offers = offers.append({'link': base_url + link[1:],
                                             'id': id,
                                             'available_from': available_from,
                                             'details': details,

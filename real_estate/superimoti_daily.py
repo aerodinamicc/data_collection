@@ -37,6 +37,26 @@ def gather_new_articles():
     return offers
 
 
+def fix_tax(price, original_price):
+    if 'без ДДС' in original_price:
+        price = int(price) + int(price)*0.2
+    if 'Цена по запитване' in original_price:
+        price = ''
+    return price
+
+
+def clean_price(typ_, original_price):
+    #import pdb; pdb.set_trace()
+    regex = '([\d\s]+)' 
+    current_regex = regex if typ_ == 'sale' else 'Наем €' + regex + '/месец'
+    if re.search(current_regex, original_price) is not None and len(original_price) > 0 and '–' not in original_price:
+        price = re.search(current_regex, original_price).group(1).replace(' ', '') 
+        price = fix_tax(price, original_price)
+        return price
+    else:
+        return original_price
+
+
 def crawlLinks(type_of_offering, page_count):
     offers = pd.DataFrame()
 
@@ -84,14 +104,9 @@ def crawlLinks(type_of_offering, page_count):
                 #    else details['Етаж:'].split('/')[0] if 'Етаж:' in details.keys() else ''
 
                 #Price
-                price = clean_text(b.find('div', attrs={'class':'prc'}).text).replace('\xa0', '')
-                price = re.search('Наем€ ([\d\s]+)/месец', price).group(1).replace(' ', '') if re.search('Наем€ ([\d\s]+)/месец', price) is not None and type_of_offering == 'rent' and len(price) > 0 and '–' not in price \
-                    else re.search('€([\d\s]+)', price).group(1).replace(' ', '') if re.search('€([\d\s]+)', price) is not None and type_of_offering == 'sale' and len(price) > 0 and '–' not in price \
-                    else '0'
-                
-                if 'без ДДС' in price:
-                    clean_price = int(clean_price) + int(clean_price)*0.2
-                
+                original_price = clean_text(b.find('div', attrs={'class':'prc'}).text).replace('\xa0', '')
+                price = clean_price(type_of_offering, original_price)
+                                
                 offers = offers.append({'link': link,
                                         'label': label,
                                         'type': typ,

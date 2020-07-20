@@ -11,6 +11,9 @@ import json
 import urllib
 from helpers import clean_text, replace_month_with_digit, months
 from datetime import datetime
+from selenium import webdriver
+from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.chrome.options import Options
 
 
 sale_url = 'http://sofia.holmes.bg'
@@ -66,11 +69,17 @@ def get_all_search_pages(neighbourhoods):
 
 def get_all_offers(search_pages):
     offers = pd.DataFrame()
-
+    options = Options()
+    options.headless = True
+    browser = webdriver.Chrome(ChromeDriverManager().install(), options=options)
+    
+    #import pdb; pdb.set_trace()
     for p in tqdm(search_pages):
-        #import pdb; pdb.set_trace()
-        resp = requests.get(p)
-        page = bs4.BeautifulSoup(resp.content.decode('cp1251'), 'html')
+        
+        browser.get(p)
+        page = bs4.BeautifulSoup(browser.page_source, 'html')
+        #resp = requests.get(p)
+        #page = bs4.BeautifulSoup(resp.content.decode('cp1251'), 'html')
 
         boxes = page.findAll('table', attrs={'width':'956'})[3:23]
         
@@ -96,7 +105,7 @@ def get_all_offers(search_pages):
                 if 'на кв.м' in price_orig:
                     #print('\n{} * {} = {}'.format(float(price), float(area), round(float(price) * float(area), 0)))
                     price = round(float(price) * float(area), 0)
-                
+
                 typ = tds[4].text if len(tds) > 4 else ''
                 desc = tds[7].text if len(tds) > 7 else ''
                 agency = tds[8].a['href'] if len(tds) > 8 and len(tds[8].findAll('a')) > 0 else ''
@@ -112,7 +121,6 @@ def get_all_offers(search_pages):
                                         'agency': agency}, ignore_index=True)
 
             except Exception as e:
-                #import pdb; set_trace()
                 print(e)
                 
 

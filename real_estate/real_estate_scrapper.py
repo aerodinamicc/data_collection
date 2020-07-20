@@ -18,7 +18,6 @@ import yavlena_daily
 COLUMNS = ['link', 'id', 'type', 'city', 'place', 'is_for_sale', 'price', 'area', 'details', 'labels', 'year', 'available_from', 'views', 'lon', 'lat', 'measurement_day']
 DESTINATION_BUCKET = 'real-estate-scrapping'
 
-
 def get_new_offers(site):
     articles = None
     try:
@@ -74,9 +73,9 @@ def save_file(is_run_locally, sites):
             csv_buffer = StringIO()
             offers.to_csv(csv_buffer, sep='\t', encoding='utf-16', index=False)
             logging.debug(site + ' has ' + str(offers.shape[0]) + ' offers.\n')
-            session = boto3.session.Session(profile_name='aero')
+            #session = boto3.session.Session(profile_name='aero')
 
-            s3 = session.resource('s3')
+            s3 = boto3.resource('s3')
             s3.Object(DESTINATION_BUCKET, 'raw/' + site + '/' + now_date + '/' + file_name).put(Body=csv_buffer.getvalue())
         else:
             if not os.path.exists('output'):
