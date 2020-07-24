@@ -19,24 +19,20 @@ def loop_links():
 
     opr = page.findAll('tr',attrs={'class':'table-data'})
     links_dates = []
-    
-    import pdb; pdb.set_trace()
     for o in opr:
         lnk = o.find('a', text='Свали')
         date = o.find('td', text=re.compile('\d{2}\.\d{2}\.\d{4}'))
         if lnk is not None:
-            links.append((lnk['href'], date.text))
+            links_dates.append((lnk['href'], date.text))
 
-    for l, d in links_dates:
+    for l, d in tqdm(links_dates):
         resp = requests.get(l)
-        page = bs4.BeautifulSoup(resp.text)
+        page = bs4.BeautifulSoup(resp.content.decode('cp1251'))
         text = get_text(page)
-
-        if 'Здрашко Танев Алексиев' in text:
+        if 'Здравко' in text:
+            import pdb; pdb.set_trace()
             with open('file{}'.format(d), 'w') as f:
                 f.write(resp.text)
-
-
 
 def get_text(page):
     par =  page.findAll('p', attrs={'class': 'MsoNormal'})
