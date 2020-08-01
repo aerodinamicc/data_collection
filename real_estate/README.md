@@ -22,3 +22,6 @@ pipwin install geopandas
 
 ## To scrape imoti.bg run
 ```python .\imoti.bg.py -current_date 0626```
+
+## To install headless Chrome on an EC2 instance
+```curl https://intoli.com/install-google-chrome.sh | bash```

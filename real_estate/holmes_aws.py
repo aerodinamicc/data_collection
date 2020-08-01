@@ -95,11 +95,12 @@ def gather_new_articles(current_date):
     #import pdb; pdb.set_trace()
     offers = crawlLinks(links, nbbhds, current_date)
     offers = offers[['link', 'title', 'address', 'details', 'neighbourhood', 'lon', 'lat', 'id', 'price', 'price_sqm', 'area', 'floor', 'description', 'views', 'date', 'agency', 'poly']]	
+    
     csv_buffer = StringIO()
     offers.to_csv(csv_buffer, sep='\t', encoding='utf-16', index=False)
 
-    s3 = session.resource('s3')
-    s3.Object(DESTINATION_BUCKET, 'raw/' + site + '/' + now_date + '/' + file_name).put(Body=csv_buffer.getvalue())										   
+    s3 = boto3.resource('s3')
+    s3.Object(DESTINATION_BUCKET, 'holmes_weekly_detailed/' + current_date + "/holmes_" + current_date + ".tsv").put(Body=csv_buffer.getvalue())										   
     # offers.to_csv('output/' + offers_file + current_date + '.tsv', sep='\t', index=False)
 
     return offers

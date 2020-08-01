@@ -20,9 +20,9 @@ def get_page_count(page):
 
 def gather_new_articles():
     resp_sale = requests.get(search_url.format(_is_sale, '1'))
-    page_sale = bs4.BeautifulSoup(resp_sale.text, 'html')
+    page_sale = bs4.BeautifulSoup(resp_sale.text, features='html.parser')
     resp_rent = requests.get(search_url.format(_is_rent, '1'))
-    page_rent = bs4.BeautifulSoup(resp_rent.text, 'html')
+    page_rent = bs4.BeautifulSoup(resp_rent.text, features='html.parser')
 
     page_count_sale = get_page_count(page_sale)
     page_count_rent = get_page_count(page_rent)
@@ -40,7 +40,7 @@ def crawlLinks(type_of_offering, page_count):
 
     for page_n in tqdm(range(1, page_count + 1)):
         resp = requests.get(search_url.format(type_of_offering, str(page_n)))
-        page = bs4.BeautifulSoup(resp.content.decode('utf-8'), 'html')
+        page = bs4.BeautifulSoup(resp.content.decode('utf-8'), features='html.parser')
 
         boxes = page.findAll('div', attrs={'class': 'offer-box'})
 

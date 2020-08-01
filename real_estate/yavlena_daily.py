@@ -22,9 +22,10 @@ offers_file = "yavlena_"
 def get_neighbourhood_links():
     options = Options()
     options.headless = True
+    options.add_argument('log-level=3')
     browser = webdriver.Chrome(ChromeDriverManager().install(), options=options)
     browser.get(base_search_url.format(''))
-    page = bs4.BeautifulSoup(browser.page_source, 'html')
+    page = bs4.BeautifulSoup(browser.page_source, features='html.parser')
     neighbourhoods  = page.findAll('input', attrs={'name': 'quarters', 'type':'checkbox'})
     browser.close()
     #tuple(neighbourhood_name, link)
@@ -45,19 +46,20 @@ def crawlLinks(neighbourhoods):
     offers = pd.DataFrame()
     options = Options()
     options.headless = True
+    options.add_argument('log-level=3')
     browser = webdriver.Chrome(ChromeDriverManager().install(), chrome_options=options)
 
     for nbhd, nbhd_link in tqdm(neighbourhoods):
         browser.get(nbhd_link)
         time.sleep(7)
-        page = bs4.BeautifulSoup(browser.page_source, 'html')
+        page = bs4.BeautifulSoup(browser.page_source, features='html.parser')
         load_more = len(page.findAll('div', attrs={'class': 'load-more-holder', 'style':re.compile('block')})) > 0
         
         #when there more results to load
         while load_more:
             browser.find_element_by_class_name("load-more-results-list").click()
             time.sleep(2)
-            page = bs4.BeautifulSoup(browser.page_source, 'html')
+            page = bs4.BeautifulSoup(browser.page_source, features='html.parser')
             load_more = len(page.findAll('div', attrs={'class': 'load-more-holder', 'style':re.compile('block')})) > 0
 
         # scrape all offer boxes for that neighbourhood

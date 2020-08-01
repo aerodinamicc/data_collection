@@ -1,0 +1,16 @@
+FROM python:3.7-slim-buster
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt 
+
+COPY etuovi_daily.py .
+COPY address_daily.py .
+COPY arco_daily.py .
+COPY holmes_daily.py .
+COPY imoteka_daily.py .
+COPY superimoti_daily.py .
+COPY vuokraovi_daily.py .
+COPY yavlena_daily.py .
+COPY real_estate_scrapper.py .
+
+CMD ["python3", "real_estate_scrapper.py"]

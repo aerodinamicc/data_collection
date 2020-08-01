@@ -30,12 +30,12 @@ def crawlLinks():
     offers = pd.DataFrame()
     for city in cities:
         resp = requests.get(search_url.format(city, str(1)))
-        page = bs4.BeautifulSoup(resp.text, 'html')
+        page = bs4.BeautifulSoup(resp.text, features='html.parser')
         page_count = get_page_count(page)
 
         for page_n in tqdm(range(1, page_count + 1)):
             resp = requests.get(search_url.format(city, str(page_n)))
-            page = bs4.BeautifulSoup(resp.text, 'html')
+            page = bs4.BeautifulSoup(resp.text, features='html.parser')
 
             boxes = page.findAll('div', attrs={'class': 'list-item-container'})
             for b in boxes:

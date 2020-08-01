@@ -60,12 +60,13 @@ def crawlLinks():
     offers = pd.DataFrame()
     options = Options()
     options.headless = True
+    options.add_argument('log-level=3')
     browser = webdriver.Chrome(ChromeDriverManager().install(), options=options)
 
     for city in cities:
         browser.get(search_url.format(city))
         time.sleep(10)
-        page = bs4.BeautifulSoup(browser.page_source, 'html')
+        page = bs4.BeautifulSoup(browser.page_source, features='html.parser')
         current_page = 0
         max_page = get_page_count(page)
         pbar = tqdm(total=max_page)
@@ -85,7 +86,7 @@ def crawlLinks():
             element = browser.find_element_by_id('paginationNext')
             browser.execute_script("arguments[0].click();", element)
             time.sleep(5)
-            page = bs4.BeautifulSoup(browser.page_source, 'html')
+            page = bs4.BeautifulSoup(browser.page_source, features='html.parser')
 
         offers = offers.append(extract_details(b, city), ignore_index=True)
         pbar.close()

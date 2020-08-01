@@ -25,7 +25,7 @@ def get_neighbourhood_links(url):
     search_page_template = '/pcgi/home.cgi?act=5&f1=0&f2=1&f3=0&f4=%E3%F0%E0%E4%20%D1%EE%F4%E8%FF'
     # page_link = base_url + search_page_template
     resp = requests.get(url)
-    page = bs4.BeautifulSoup(resp.content.decode('cp1251'), 'html')
+    page = bs4.BeautifulSoup(resp.content.decode('cp1251'), features='html.parser')
     neighbourhoods = page.findAll('a',
                                   href=re.compile('sofia\.holmes\.bg/pcgi/home\.cgi.*f4=град(?:\s)?София.*f5=[А-Яа-я0-9\s]+'),
                                   # text=re.compile('[\d]+'),
@@ -44,7 +44,7 @@ def get_all_search_pages(neighbourhoods):
 
         while not last_page:
             resp = requests.get(page_link)
-            page = bs4.BeautifulSoup(resp.content.decode('cp1251'), 'html')
+            page = bs4.BeautifulSoup(resp.content.decode('cp1251'), features='html.parser')
 
             visible_pages = page.findAll('a', href=re.compile('sofia\.holmes\.bg/pcgi/home\.cgi.*f6='), text=re.compile('[\d]+'), attrs={'class': 'pageNumbers'})
             visible_pages = [int(i.text) for i in visible_pages]
@@ -71,13 +71,14 @@ def get_all_offers(search_pages):
     offers = pd.DataFrame()
     options = Options()
     options.headless = True
+    options.add_argument('log-level=3')
     browser = webdriver.Chrome(ChromeDriverManager().install(), options=options)
     
     #import pdb; pdb.set_trace()
     for p in tqdm(search_pages):
         
         browser.get(p)
-        page = bs4.BeautifulSoup(browser.page_source, 'html')
+        page = bs4.BeautifulSoup(browser.page_source, features='html.parser')
         #resp = requests.get(p)
         #page = bs4.BeautifulSoup(resp.content.decode('cp1251'), 'html')
 

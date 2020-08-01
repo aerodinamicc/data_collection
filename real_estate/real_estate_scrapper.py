@@ -47,6 +47,7 @@ def save_file(is_run_locally, sites):
     start = time.time()
 
     for site in sites:
+        print('\n' + site)
         #import pdb; pdb.set_trace()
         logging.debug('Scrapping {}'.format(site.upper()))
         # not UTC but EET
@@ -89,7 +90,7 @@ def save_file(is_run_locally, sites):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-is_run_locally', required=False, help="MMDD", default=False)
-    parser.add_argument('-sites', required=False, help="site1, site2", default="address, arco, etuovi, holmes, imoteka, superimoti, vuokraovi, yavlena")
+    parser.add_argument('-sites', required=False, help="site1, site2", default="address, arco, yavlena, holmes, imoteka, superimoti, vuokraovi, etuovi")
     parsed = parser.parse_args()
     is_run_locally = bool(parsed.is_run_locally)
     sites = [s.strip() for s in parsed.sites.split(',')]
