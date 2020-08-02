@@ -5,12 +5,13 @@ import requests
 import pandas as pd
 from urllib.parse import urlsplit
 import re
+from tqdm import tqdm
 from helpers import clean_text, replace_month_with_digit
 
 
 def gather_new_articles(site):
     request = requests.get(site)
-    soup = bs4.BeautifulSoup(request.text, 'html')
+    soup = bs4.BeautifulSoup(request.text, features="html.parser")
 
     all_articles = set([site + a['href'] for a in soup.findAll('a', attrs={'href':re.compile('/novini/article/[\d]+$')})])
     all_articles = crawlLinks(list(all_articles))
@@ -21,13 +22,13 @@ def gather_new_articles(site):
 def crawlLinks(links):
     articles_content = pd.DataFrame()
 
-    for link in links:
+    for link in tqdm(links):
         try:
             rq = requests.get(link)
             domain = "{0.netloc}".format(urlsplit(link))
 
             if rq.status_code == 200:
-                page = bs4.BeautifulSoup(rq.text, 'html')
+                page = bs4.BeautifulSoup(rq.text, features="html.parser")
                 meta = page.select('.head')[0]
                 headline = meta.h1.text.strip()
 

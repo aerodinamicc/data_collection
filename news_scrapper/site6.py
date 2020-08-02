@@ -4,13 +4,14 @@ import bs4
 import requests
 import pandas as pd
 import re
+from tqdm import tqdm
 from urllib.parse import unquote
 from helpers import clean_text, replace_month_with_digit
 
 
 def gather_new_articles(site):
     request = requests.get(site)
-    soup = bs4.BeautifulSoup(request.text, 'html')
+    soup = bs4.BeautifulSoup(request.text, features="html.parser")
 
     all_articles = set([unquote(a['href']) for a in soup.findAll('a', attrs={'href': re.compile(site+'/view/')}) if
                   a['href'].startswith(site) and
@@ -25,12 +26,12 @@ def gather_new_articles(site):
 
 def crawlLinks(links):
     articles_content = pd.DataFrame()
-    for link in links:
+    for link in tqdm(links):
         try:
             rq = requests.get(link)
 
             if rq.status_code == 200:
-                page = bs4.BeautifulSoup(rq.text, 'html')
+                page = bs4.BeautifulSoup(rq.text, features="html.parser")
                 category = page.select('.gtm-ArticleBreadcrumb-click')[0].text if len(page.select('.gtm-ArticleBreadcrumb-click')) > 0 else ''
                 headline = page.select('.title-wrap-roboto')[0].h1.text.strip() if len(page.select('.title-wrap-roboto')) > 0 else ''
 

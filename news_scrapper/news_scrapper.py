@@ -14,6 +14,7 @@ import site6
 import site7
 import site8
 import site9
+import site10
 
 def get_new_articles(site):
     articles = None
@@ -36,12 +37,14 @@ def get_new_articles(site):
             articles = site8.gather_new_articles('https://www.dnevnik.bg')
         elif site == 'sportal.bg': 
             articles = site9.gather_new_articles('https://www.sportal.bg/')
+        elif site == 'frognews.bg': 
+            articles = site10.gather_new_articles('https://frognews.bg/')
     except:
         return None
     
     return articles
     
-sites = ['vesti.bg', 'news.bg', 'blitz.bg', 'dir.bg', '24chasa.bg', 'nova.bg', 'fakti.bg', 'dnevnik.bg', 'sportal.bg'] # 
+sites = ['vesti.bg', 'news.bg', 'blitz.bg', 'dir.bg', '24chasa.bg', 'nova.bg', 'fakti.bg', 'dnevnik.bg', 'sportal.bg', 'frognews.bg'] # 
 
 
 COLUMNS = ['comments', 'views', 'shares', 'created_timestamp', 'visited_timestamp',
@@ -51,11 +54,12 @@ COLUMNS = ['comments', 'views', 'shares', 'created_timestamp', 'visited_timestam
 DESTINATION_BUCKET = 'news-scrapping'
 
 
-def save_file(is_run_locally):
+def save_file(is_run_locally, sites):
     start = time.time()
 
     for site in sites:
         logging.debug('Scrapping {}'.format(site.upper()))
+        print('\n' + site)
         # not UTC but EET
         now = datetime.now()
         now_date = str(now.date())
@@ -65,7 +69,7 @@ def save_file(is_run_locally):
         articles = get_new_articles(site)
         if articles is None:
             continue
-        #articles.rename(columns={'date': 'created_timestamp'}, inplace=True)
+        articles.rename(columns={'date': 'created_timestamp'}, inplace=True)
         articles['visited_timestamp'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         # accomodate all columns across all datasets
@@ -95,7 +99,9 @@ def save_file(is_run_locally):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-is_run_locally', required=False, help="MMDD", default=False)
+    parser.add_argument('-sites', required=False, help="site1, site2", default="vesti.bg, news.bg, blitz.bg, dir.bg, 24chasa.bg, nova.bg, fakti.bg, dnevnik.bg, sportal.bg, frognews.bg")
     parsed = parser.parse_args()
     is_run_locally = bool(parsed.is_run_locally)
-    save_file(is_run_locally)
+    sites = [s.strip() for s in parsed.sites.split(',')]
+    save_file(is_run_locally, sites)
 

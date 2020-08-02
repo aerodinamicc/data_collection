@@ -6,12 +6,13 @@ from datetime import datetime
 import pandas as pd
 from urllib.parse import urlsplit
 import re
+from tqdm import tqdm
 from helpers import clean_text, replace_month_with_digit
 
 
 def gather_new_articles(site):
     request = requests.get(site)
-    soup = bs4.BeautifulSoup(request.text, 'html')
+    soup = bs4.BeautifulSoup(request.text, features="html.parser")
 
     all_articles = set([a['href'] for a in soup.find_all('a', href=True) if a['href'].startswith(site) and a['href'].endswith('.html')])
     articles = crawlLinks(all_articles)
@@ -22,13 +23,13 @@ def gather_new_articles(site):
 def crawlLinks(links):
     articlesContent = pd.DataFrame()
 
-    for link in list(links):
+    for link in tqdm(list(links)):
         try:    
             rq = requests.get(link)
             domain = "{0.netloc}".format(urlsplit(link))
             category = re.search(domain + '/([^/]+)', link).group(1)
             if rq.status_code == 200:
-                page = bs4.BeautifulSoup(rq.text, 'html')
+                page = bs4.BeautifulSoup(rq.text, features="html.parser")
 
                 if page.find({'class': 'article-post'}):
                     body = page.select('.article-post')[0]

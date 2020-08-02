@@ -6,12 +6,13 @@ from datetime import datetime
 import pandas as pd
 from urllib.parse import urlsplit
 import re
+from tqdm import tqdm
 from helpers import clean_text, replace_month_with_digit
 
 
 def gather_new_articles(site):
     request = requests.get(site)
-    soup = bs4.BeautifulSoup(request.text, 'html')
+    soup = bs4.BeautifulSoup(request.text, features="html.parser")
 
     all_articles = set([a['href'] for a in soup.find_all('a', href=True) if
                   re.match('^https://\w+\.dir\.bg/\w+/', a['href'])
@@ -26,14 +27,14 @@ def gather_new_articles(site):
 def crawlLinks(links):
     articles_content = pd.DataFrame()
 
-    for link in links:
+    for link in tqdm(links):
         try:
             rq = requests.get(link)
             domain = "{0.netloc}".format(urlsplit(link))
             category = re.search(domain + '/([^/]+)', link).group(1)
 
             if rq.status_code == 200:
-                page = bs4.BeautifulSoup(rq.text, 'html')
+                page = bs4.BeautifulSoup(rq.text, features="html.parser")
                 titles = page.select('.text-wrapper')[0]
                 headline = titles.h2.text
                 subtitle = page.select('.text-wrapper')[0].p.text

@@ -4,13 +4,13 @@ import bs4
 import requests
 import pandas as pd
 import re
+from tqdm import tqdm
 from helpers import clean_text, replace_month_with_digit
 
 
 def gather_new_articles(site):
-    print(site)
     request = requests.get(site)
-    soup = bs4.BeautifulSoup(request.text, 'html')
+    soup = bs4.BeautifulSoup(request.text, features="html.parser")
     
     arts = soup.findAll('a', href=re.compile('^' + site + '.*' + '[\d]{7}$'))
     all_articles = set([(art['href'], re.search('gtm-(.*)-click', art['class'][0]).group(1)) for art in arts])
@@ -22,11 +22,11 @@ def gather_new_articles(site):
 def crawlLinks(links):
     articlesContent = pd.DataFrame()
 
-    for link, section in list(links):
+    for link, section in tqdm(list(links)):
         try:
             rq = requests.get(link)
             if rq.status_code == 200:
-                page = bs4.BeautifulSoup(rq.text, 'html')
+                page = bs4.BeautifulSoup(rq.text, features="html.parser")
                 
                 articleTitle = page.select('h1')[0].text if len(page.select('h1')) > 0 else ''
                 articleSubtitle = page.select('h2.subtitle')[0].text if len(page.select('h2.subtitle')) > 0 else ''
