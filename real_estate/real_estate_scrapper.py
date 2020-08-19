@@ -53,13 +53,14 @@ def save_file(is_run_locally, sites):
         # not UTC but EET
         now = datetime.now()
         now_date = str(now.date())
+        now_date = '2020-08-17'
         file_name = site + '_' + now_date + '.tsv'
 
         offers = get_new_offers(site)
         if offers is None:
             continue
 
-        offers['measurement_day'] = datetime.now().strftime("%Y-%m-%d")
+        offers['measurement_day'] = now_date
 
         # accomodate all columns across all datasets
         for col in COLUMNS:
@@ -73,10 +74,11 @@ def save_file(is_run_locally, sites):
     
             csv_buffer = StringIO()
             offers.to_csv(csv_buffer, sep='\t', encoding='utf-16', index=False)
+            print('\n' + site + ' has ' + str(offers.shape[0]) + ' offers.\n')
             logging.debug(site + ' has ' + str(offers.shape[0]) + ' offers.\n')
-            #session = boto3.session.Session(profile_name='aero')
+            session = boto3.session.Session(profile_name='aero')
 
-            s3 = boto3.resource('s3')
+            s3 = session.resource('s3')
             s3.Object(DESTINATION_BUCKET, 'raw/' + site + '/' + now_date + '/' + file_name).put(Body=csv_buffer.getvalue())
         else:
             if not os.path.exists('output'):
@@ -90,7 +92,7 @@ def save_file(is_run_locally, sites):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-is_run_locally', required=False, help="MMDD", default=False)
-    parser.add_argument('-sites', required=False, help="site1, site2", default="address, arco, yavlena, holmes, imoteka, superimoti, vuokraovi, etuovi")
+    parser.add_argument('-sites', required=False, help="site1, site2", default="address, arco, holmes, imoteka, superimoti, vuokraovi, etuovi, yavlena")
     parsed = parser.parse_args()
     is_run_locally = bool(parsed.is_run_locally)
     sites = [s.strip() for s in parsed.sites.split(',')]

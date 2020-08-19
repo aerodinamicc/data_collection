@@ -33,7 +33,7 @@ def gather_new_articles():
 
     browser.get(search_url.format('rent', '1'))
     time.sleep(5)
-    page_rent = bs4.BeautifulSoup(browser.page_source, fatures='html.parser')
+    page_rent = bs4.BeautifulSoup(browser.page_source, features='html.parser')   
     page_count_rent = get_page_count(page_rent)
 
     offers_sale = crawlLinks('sale', page_count_sale)
