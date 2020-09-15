@@ -29,7 +29,8 @@ def get_neighbourhood_links(url):
     neighbourhoods = page.findAll('a',
                                   href=re.compile('sofia\.holmes\.bg/pcgi/home\.cgi.*f4=град(?:\s)?София.*f5=[А-Яа-я0-9\s]+'),
                                   # text=re.compile('[\d]+'),
-                                  attrs={'class': 'linkSearch'})
+                                  # attrs={'class': 'linkSearch'}
+                                  )
     neighbourhoods = [re.search('&f5=(.*)$', i['href']).group(1) for i in neighbourhoods]
     neighbourhoods = list(set([(n, url + search_page_template + '&f5=' + urllib.parse.quote(n.encode('cp1251'))) for n in neighbourhoods]))
     return neighbourhoods
@@ -46,10 +47,10 @@ def get_all_search_pages(neighbourhoods):
             resp = requests.get(page_link)
             page = bs4.BeautifulSoup(resp.content.decode('cp1251'), features='html.parser')
 
-            visible_pages = page.findAll('a', href=re.compile('sofia\.holmes\.bg/pcgi/home\.cgi.*f6='), text=re.compile('[\d]+'), attrs={'class': 'pageNumbers'})
+            visible_pages = page.findAll('a', href=re.compile('sofia\.holmes\.bg/pcgi/home\.cgi.*f6='), text=re.compile('[\d]+')) #, attrs={'class': 'pageNumbers'})
             visible_pages = [int(i.text) for i in visible_pages]
 
-            next_page = page.findAll('a', href=re.compile('sofia\.holmes\.bg/pcgi/home\.cgi.*f6='), text=re.compile('^(?![\d]+)'), attrs={'class': 'pageNumbers'})
+            next_page = page.findAll('a', href=re.compile('sofia\.holmes\.bg/pcgi/home\.cgi.*f6='), text=re.compile('^(?![\d]+)')) #, attrs={'class': 'pageNumbers'})
             href = next_page[0]['href'] if len(next_page) > 0 else None
             page_number = int(re.search('([\d]+)$', href).group(1)) if href is not None else None
 
@@ -64,7 +65,16 @@ def get_all_search_pages(neighbourhoods):
         search_pages = [n[1] + '&f6={}'.format(p) for p in pages]
         all_search_pages = all_search_pages + search_pages
 
+        #import pdb; pdb.set_trace()
+
     return all_search_pages
+
+
+def get_place_and_labels(str):
+    if str.find('(публикувана') > -1:
+        return (str[:str.find('(публикувана')], 'published recently')
+    
+    return (str, '')
 
 
 def get_all_offers(search_pages):
@@ -82,17 +92,24 @@ def get_all_offers(search_pages):
         #resp = requests.get(p)
         #page = bs4.BeautifulSoup(resp.content.decode('cp1251'), 'html')
 
-        boxes = page.findAll('table', attrs={'width':'956'})[3:23]
+
+
+        boxes = page.find_all('div', attrs={'class': 'items'})[0].findAll('item')
         
         for b in boxes:
             try:
-                tds = b.findAll('td')
-                link = tds[2].a['href'] if len(tds) > 2 else ''
+                link = b.find_all('text')[0].find_all('div', attrs={'class': 'title'})[0].a['href']
+                title = b.find_all('text')[0].find_all('div', attrs={'class': 'title'})[0]
+                data = b.find_all('text')[0].find_all('div', attrs={'class': 'data'})[0].text
+                info = b.find_all('text')[0].find_all('div', attrs={'class': 'info'})[0]
+
                 id = re.search('adv=(.*)$', link).group(1)
-                place = tds[2].a.text.replace('град София,', '') if len(tds) > 2 else ''
-                area = tds[5].text.replace(' кв.м', '') if len(tds) > 5 else ''
-                price = tds[3].text.strip() if len(tds) > 3 else ''
-                price_orig = tds[3].text.strip() if len(tds) > 3 else ''
+                place, labels = get_place_and_labels(clean_text(title.a.text.replace('град София,', '')))
+
+
+                area = re.search('(^[^А-Яа-я\.]*)', data.split(',')[1].replace(' ', '')).group(1) if len(data.split(',')) > 1 and re.search('(^[^А-Яа-я\.]*)', data.split(',')[1].replace(' ', '')) else '0'
+                price = clean_text(title.find_all('span')[0].text)
+                price_orig = price
 
                 price = re.search('([\d\s]+)', price).group(1).replace(' ', '') if re.search('([\d\s]+)', price) else '0'
                 if 'Цена при запитване' in price_orig:
@@ -107,9 +124,8 @@ def get_all_offers(search_pages):
                     #print('\n{} * {} = {}'.format(float(price), float(area), round(float(price) * float(area), 0)))
                     price = round(float(price) * float(area), 0)
 
-                typ = tds[4].text if len(tds) > 4 else ''
-                desc = tds[7].text if len(tds) > 7 else ''
-                agency = tds[8].a['href'] if len(tds) > 8 and len(tds[8].findAll('a')) > 0 else ''
+                typ = clean_text(data.split(',')[0])
+                agency = clean_text(info.a['href']) if len(info.find_all('a')) > 0 else ''
 
                 offers = offers.append({'link': sale_url + link,
                                         'id': id,
@@ -117,8 +133,9 @@ def get_all_offers(search_pages):
                                         'place': place,
                                         'price': price,
                                         'area': area,
-                                        'description': desc,
-                                        'currency':currency,
+                                        'labels': labels,
+                                        'description': clean_text(info.text),
+                                        'currency': currency,
                                         'agency': agency}, ignore_index=True)
 
             except Exception as e:

@@ -51,7 +51,7 @@ def crawlLinks(neighbourhoods):
 
     for nbhd, nbhd_link in tqdm(neighbourhoods):
         browser.get(nbhd_link)
-        time.sleep(7)
+        time.sleep(7)   
         page = bs4.BeautifulSoup(browser.page_source, features='html.parser')
         load_more = len(page.findAll('div', attrs={'class': 'load-more-holder', 'style':re.compile('block')})) > 0
         

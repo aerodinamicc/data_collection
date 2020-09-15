@@ -16,7 +16,10 @@ import yavlena_daily
     
 
 COLUMNS = ['link', 'id', 'type', 'city', 'place', 'is_for_sale', 'price', 'area', 'details', 'labels', 'year', 'available_from', 'views', 'lon', 'lat', 'measurement_day']
+MAIN_COLUMNS = ['link', 'id', 'type', 'city', 'place', 'is_for_sale', 'area']
+DETAIL_COLUMNS = ['id', 'price', 'details', 'labels', 'year', 'available_from', 'views', 'lon', 'lat', 'measurement_day']
 DESTINATION_BUCKET = 'real-estate-scrapping'
+
 
 def get_new_offers(site):
     articles = None
@@ -53,7 +56,7 @@ def save_file(is_run_locally, sites):
         # not UTC but EET
         now = datetime.now()
         now_date = str(now.date())
-        now_date = '2020-08-17'
+        #now_date = '2020-08-17'
         file_name = site + '_' + now_date + '.tsv'
 
         offers = get_new_offers(site)

@@ -26,9 +26,8 @@ def get_neighbourhood_links():
     resp = requests.get(base_url)
     page = bs4.BeautifulSoup(resp.content.decode('cp1251'), 'html')
     neighbourhoods = page.findAll('a',
-                                  href=re.compile('http://sofia\.holmes\.bg/pcgi/home\.cgi.*f4=град(?:\s)?София.*f5=[А-Яа-я0-9\s]+'),
-                                  # text=re.compile('[\d]+'),
-                                  attrs={'class': 'linkSearch'})
+                                  href=re.compile('sofia\.holmes\.bg/pcgi/home\.cgi.*f4=град(?:\s)?София.*f5=[А-Яа-я0-9\s]+'),
+                                  )
     neighbourhoods = [re.search('&f5=(.*)$', i['href']).group(1) for i in neighbourhoods]
     neighbourhoods = list(set([(n, base_url + search_page_template + '&f5=' + urllib.parse.quote(n.encode('cp1251'))) for n in neighbourhoods]))
     return neighbourhoods
@@ -36,7 +35,6 @@ def get_neighbourhood_links():
 
 def get_all_links_for_each_neighbourhood(neighbourhoods, current_date):
     links = []
-
     for n in neighbourhoods:
         pages = set([1])
         last_page = False
@@ -46,10 +44,10 @@ def get_all_links_for_each_neighbourhood(neighbourhoods, current_date):
             resp = requests.get(page_link)
             page = bs4.BeautifulSoup(resp.content.decode('cp1251'), 'html')
 
-            visible_pages = page.findAll('a', href=re.compile('http://sofia\.holmes\.bg/pcgi/home\.cgi.*f6='), text=re.compile('[\d]+'), attrs={'class': 'pageNumbers'})
+            visible_pages = page.findAll('a', href=re.compile('sofia\.holmes\.bg/pcgi/home\.cgi.*f6='), text=re.compile('[\d]+'))
             visible_pages = [int(i.text) for i in visible_pages]
 
-            next_page = page.findAll('a', href=re.compile('http://sofia\.holmes\.bg/pcgi/home\.cgi.*f6='), text=re.compile('^(?![\d]+)'), attrs={'class': 'pageNumbers'})
+            next_page = page.findAll('a', href=re.compile('sofia\.holmes\.bg/pcgi/home\.cgi.*f6='), text=re.compile('^(?![\d]+)'))
             href = next_page[0]['href'] if len(next_page) > 0 else None
             page_number = int(re.search('([\d]+)$', href).group(1)) if href is not None else None
 
@@ -62,13 +60,12 @@ def get_all_links_for_each_neighbourhood(neighbourhoods, current_date):
             pages.update(set(visible_pages))
 
         search_pages = [n[1] + '&f6={}'.format(p) for p in pages]
-        #import pdb; pdb.set_trace()
 
         for p in search_pages:
             resp = requests.get(p)
             page = bs4.BeautifulSoup(resp.content.decode('cp1251'), 'html')
 
-            visible_links = page.findAll('a', href=re.compile('/pcgi/home\.cgi.*act=3.*adv=[\w\d]+$'), attrs={'class': 'linkLocatList'})
+            visible_links = page.findAll('a', href=re.compile('/pcgi/home\.cgi.*act=3.*adv=[\w\d]+$'))
             visible_links = [(base_url + i['href'], n[0]) for i in visible_links]
             links = links + visible_links
 
@@ -88,19 +85,16 @@ def gather_new_articles(current_date):
         links = list(pd.read_csv('output/' + links_file + current_date + '.tsv', sep='\t')['link'].values)
         nbbhds = list(pd.read_csv('output/' + links_file + current_date + '.tsv', sep='\t')['neighbourhood'].values)
     else:"""
-    
     neighbourhoods = get_neighbourhood_links()
-    links, nbbhds = get_all_links_for_each_neighbourhood(neighbourhoods, current_date)
+    links, nbbhds = get_all_links_for_each_neighbourhood(neighbourhoods[:2], current_date)
 
-    #import pdb; pdb.set_trace()
     offers = crawlLinks(links, nbbhds, current_date)
     offers = offers[['link', 'title', 'address', 'details', 'neighbourhood', 'lon', 'lat', 'id', 'price', 'price_sqm', 'area', 'floor', 'description', 'views', 'date', 'agency', 'poly']]	
     csv_buffer = StringIO()
     offers.to_csv(csv_buffer, sep='\t', encoding='utf-16', index=False)
 
     s3 = session.resource('s3')
-    s3.Object(DESTINATION_BUCKET, 'raw/' + site + '/' + now_date + '/' + file_name).put(Body=csv_buffer.getvalue())										   
-    # offers.to_csv('output/' + offers_file + current_date + '.tsv', sep='\t', index=False)
+    s3.Object(DESTINATION_BUCKET, 'raw/' + site + '/' + now_date + '/' + file_name).put(Body=csv_buffer.getvalue())
 
     return offers
 
@@ -122,39 +116,30 @@ def get_desc(page):
     desc_end_ind = str(page).find(desc_end_phrase, desc_start_ind)
     desc = str(page)[desc_start_ind:desc_end_ind] if desc_start_ind > 100 else ''
 
-    return clean_string(desc)
+    return clean_text(desc)
 
 
-def get_date(page):
-    date_start_phrase = 'Публикувана в '
-    date_end_phrase = '<br/>'
-    date_start_ind = str(page).find(date_start_phrase) + len(date_start_phrase)
-    date_end_ind = str(page).find(date_end_phrase, date_start_ind)
-    date = str(page)[date_start_ind:date_end_ind] if date_start_ind > 100 else ''
-    articleDate = date
-    month_name = [m for m in months.keys() if m in articleDate][0]
+def get_date(date):
+    date = date.replace('Публикувана в ', '')
+    month_name = [m for m in months.keys() if m in date][0]
     # "15:54 на 21 февруари, 2020 год."
-    articleDate = articleDate.replace(month_name,
-                                      replace_month_with_digit(month_name)) if month_name is not None else articleDate
+    # "12:03 на 3 септември, 2020 год."
+    articleDate = date.replace(month_name,
+                                      replace_month_with_digit(month_name)) if month_name is not None else date
     articleDate = pd.to_datetime(articleDate, format='%H:%M на %d %m, %Y год.')
 
     return articleDate
 
 
-def get_details(keys, values):
+def get_details(elements):
     dict = {}
-    if len(keys) != len(values):
+    if len(elements) % 2 != 0:
         return None
     else:
-        for i in range(len(keys)):
-            dict[keys[i].text] = values[i].text
+        for i in range(0, len(elements), 2):
+            dict[elements[i].text] = elements[i+1].text
 
-        return json.dumps(dict, ensure_ascii=False)
-
-
-def clean_string(str):
-    return str.replace('\n', ' ').replace('\t', ' ').strip()
-
+        return dict
 
 
 def crawlLinks(links, nbbhds, current_date):
@@ -169,45 +154,44 @@ def crawlLinks(links, nbbhds, current_date):
         try:
             resp = requests.get(link)
             page = bs4.BeautifulSoup(resp.content.decode('cp1251'), 'html.parser')
+            page = page.find_all('div', attrs={'class': 'content'})[0]
 
             id = re.search('=([\d\w]+)$', link).group(1)
-            lon = page.findAll('input', attrs={'name': 'mapn', 'type': 'hidden'})[0]['value'].split(',')[0] \
-                if len(page.findAll('input', attrs={'name': 'mapn', 'type': 'hidden'})) > 0 \
+            lon = page.find_all('input', attrs={'name': 'mapn', 'type': 'hidden'})[0]['value'].split(',')[0] \
+                if len(page.find_all('input', attrs={'name': 'mapn', 'type': 'hidden'})) > 0 \
                 else ''
-            lat = page.findAll('input', attrs={'name': 'mapn', 'type': 'hidden'})[0]['value'].split(',')[1] \
-                if len(page.findAll('input', attrs={'name': 'mapn', 'type': 'hidden'})) > 0 \
+            lat = page.find_all('input', attrs={'name': 'mapn', 'type': 'hidden'})[0]['value'].split(',')[1] \
+                if len(page.find_all('input', attrs={'name': 'mapn', 'type': 'hidden'})) > 0 \
                 else ''
 
-            address = clean_string(page.findAll('td', attrs={'width': '225'})[0].text) \
-                if len(page.findAll('td', attrs={'width': '225'})) > 0 \
+            address = clean_text(page.find_all('div', attrs={'class': 'title'})[0].find_all('span')[0].text.replace('Виж на картата', '')) \
+                if len(page.find_all('div', attrs={'class': 'title'})[0].find_all('span')) > 0 \
                 else ''
-            poly = clean_string(page.findAll('input', attrs={'name': 'p', 'type': 'hidden'})[0]['value']) \
-                if len(page.findAll('input', attrs={'name': 'p', 'type': 'hidden'})) > 0 \
+            poly = clean_text(page.find_all('input', attrs={'name': 'p', 'type': 'hidden'})[0]['value']) \
+                if len(page.find_all('input', attrs={'name': 'p', 'type': 'hidden'})) > 0 \
                 else ''
-            details_key = page.findAll('td', attrs={'width': '100'})
-            details_value = page.findAll('td', attrs={'width': '230'})
-            details = get_details(details_key, details_value)
+            details_li = page.find_all('ul', attrs={'class': 'param'})[0].find_all('li')
+            details = get_details(details_li)
 
-            price = page.find_all('span', {'id': re.compile('^cena$')})[0].text
-            price_sq = page.find_all('span', {'id': re.compile('^cenakv')})[0].text
+            price = clean_text(page.find_all('div', {'id': re.compile('^price$')})[0].text)
+            price_sq = clean_text(page.find_all('em', {'id': re.compile('^price_kv$')})[0].text)
             agency = get_agency(page)
 
-            views = page.find(text=re.compile('Обявата е посетена'))
-            views = views.find_next_sibling().text if views is not None else ''
-            date = get_date(page)
+            views = page.find_all('span', {'class': 'num'})[0].text.replace(' ', '')
+            date = page.find_all('span', {'class': 'date'})[0].text
+            date = get_date(date)
             desc = get_desc(page)
-            area = page.find('td', text=re.compile('Квадратура:'))
-            area = area.find_next_sibling().text if area is not None else ''
-            floor = page.find('td', text=re.compile('Етаж:'))
-            floor = floor.find_next_sibling().text if floor is not None else ''
+            area = details['Квадратура'] if 'Квадратура' in details.keys() else ''
+            floor = details['Етаж'] if 'Етаж' in details.keys() else ''
 
-            title = page.findAll('input', attrs={'name': 'f0', 'type': 'hidden'})
-            title = title[0]['value'].split(',')[0] if len(title) > 0 else ''
+            title = clean_text(page.find_all('div', attrs={'class': 'title'})[0].text) \
+                if len(page.find_all('div', attrs={'class': 'title'})) > 0 \
+                else ''
 
             current_offer = pd.DataFrame(data={'link': link,
                                                'title': title,
                                                'address': address,
-                                               'details': details,
+                                               'details': json.dumps(details, ensure_ascii=False),
                                                'neighbourhood': nbbhds[ind].split(',')[0],
                                                'lon': lon,
                                                'lat': lat,
