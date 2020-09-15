@@ -99,8 +99,8 @@ def gather_new_articles(current_date):
     
     csv_buffer = StringIO()
     offers.to_csv(csv_buffer, sep='\t', encoding='utf-16', index=False)
-    session = boto3.session.Session(profile_name='aero')
-    s3 = session.resource('s3')
+    #session = boto3.session.Session(profile_name='aero')
+    s3 = boto3.resource('s3')
     s3.Object(DESTINATION_BUCKET, 'holmes_weekly_detailed/' + current_date + "/holmes_" + current_date + ".tsv").put(Body=csv_buffer.getvalue())										   
     # offers.to_csv('output/' + offers_file + current_date + '.tsv', sep='\t', index=False)
 
