@@ -1,5 +1,8 @@
 #
 real_estate/connection.txt
+real_estate/connection_rds.txt
+real_estate/cred_rds.txt
+real_estate/rds_testo.py
 real_estate/output/
 real_estate/shp/
 real_estate/*.tsv
