@@ -92,7 +92,7 @@ engine.execute(sal.text(cast_query))
 #INGESTING
 
 ingest_query = """
-INSERT INTO holmes (link, title, address, details, region, place, lon, lat, id, price, price_sqm, area, floor, description, views, date, measurement_day)
+INSERT INTO holmes (link, title, address, details, place, lon, lat, id, price, price_sqm, area, floor, description, views, date, measurement_day)
 SELECT * FROM holmes_import_casted
 """
 engine.execute(ingest_query)
