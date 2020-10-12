@@ -25,7 +25,6 @@ s3 = boto3.client('s3')
 my_bucket = s3.list_objects(Bucket=_BUCKET, Prefix='holmes_weekly_detailed')
 files = [obj['Key'] for obj in my_bucket['Contents']]
 
-#files = os.listdir('output/')
 new_dates = [(f, f[f.find('holmes_20') + len('holmes_'):f.find('.tsv')]) \
                 for f in files \
                 if f[f.find('holmes_20') + len('holmes_'):f.find('.tsv')] not in distinct_days]
@@ -36,7 +35,6 @@ engine.execute('DELETE FROM holmes_import')
 for f, date in new_dates:
     print(f)
     obj = s3.get_object(Bucket= _BUCKET, Key= f) 
-# get object and file (key) from bucket
 
     d = pd.read_csv(obj['Body'],  sep='\t')
     d['title'] = d['title'].apply(lambda x: x.split('   ')[0].lower())
@@ -57,10 +55,6 @@ for f, date in new_dates:
     contents = output.getvalue()
     cur.copy_from(output, 'holmes_import', null="") # null values become ''
     conn_raw.commit()
-    
-    #import pdb; pdb.set_trace()
-
-    # d.to_sql('holmes_import', engine, if_exists='append', index=False, dtype=types)
 
 #CLEANING
 
@@ -70,7 +64,7 @@ SELECT
 	link, 
     title, 
 	substring(address from trim(place)||'(.*)') as address, 
-	details::json,
+	replace(substring(details, 2, length(details)-2), '""', '"')::json,
 	substring(address from '(.*)'||trim(place)) as region, 
 	trim(place), 
     lon::float, 
