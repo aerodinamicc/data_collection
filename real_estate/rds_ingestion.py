@@ -65,7 +65,6 @@ SELECT
     title, 
 	substring(address from trim(place)||'(.*)') as address, 
 	replace(substring(details, 2, length(details)-2), '""', '"')::json,
-	substring(address from '(.*)'||trim(place)) as region, 
 	trim(place), 
     lon::float, 
     lat::float,
