@@ -96,15 +96,75 @@ def gather_new_articles(current_date):
     #import pdb; pdb.set_trace()
     offers = crawlLinks(links, nbbhds, current_date)
     offers = offers[['link', 'title', 'address', 'details', 'neighbourhood', 'lon', 'lat', 'id', 'price', 'price_sqm', 'area', 'floor', 'description', 'views', 'date', 'agency', 'poly']]	
-    
-    csv_buffer = StringIO()
-    offers.to_csv(csv_buffer, sep='\t', encoding='utf-16', index=False)
-    #session = boto3.session.Session(profile_name='aero')
-    s3 = boto3.resource('s3')
-    s3.Object(DESTINATION_BUCKET, 'holmes_weekly_detailed/' + current_date + "/holmes_" + current_date + ".tsv").put(Body=csv_buffer.getvalue())										   
-    # offers.to_csv('output/' + offers_file + current_date + '.tsv', sep='\t', index=False)
 
     return offers
+
+
+def send_to_rds(dd):
+    with open('connection_rds.txt', 'r') as f:
+        DATABASE_URI = f.read()
+        engine = sal.create_engine(DATABASE_URI)
+        conn = engine.connect()
+
+    d['title'] = d['title'].apply(lambda x: x.split('   ')[0].lower())
+    d['views'] = d['views'].apply(lambda x: str(x).replace('пъти', ''))
+    d.rename(columns={"neighbourhood":'place'}, inplace=True)
+    d.drop(columns=['poly', 'agency'], inplace=True)
+    d['measurement_day'] = date
+
+    types = {}
+    for col in d.columns:
+        types[col] = sal.types.String()
+    
+    conn_raw = engine.raw_connection()
+    cur = conn_raw.cursor()
+    output = io.StringIO()
+    d.to_csv(output, sep='\t', header=False, index=False)
+    output.seek(0)
+    contents = output.getvalue()
+    cur.copy_from(output, 'holmes_import', null="") # null values become ''
+    conn_raw.commit()
+
+    #CLEANING
+
+    cast_query = """
+    CREATE TABLE holmes_import_casted AS
+    SELECT 
+        link, 
+        title, 
+        substring(address from trim(place)||'(.*)') as address, 
+        replace(substring(details, 2, length(details)-2), '""', '"')::json,
+        trim(place), 
+        lon::float, 
+        lat::float,
+        id, 
+        case when lower(price) like '%лв%' THEN round(replace(substring(price from '[\d\s]+'), ' ', '')::float / 1.9588, 2)
+            WHEN trim(price) = 'при запитване' THEN 0.
+            ELSE replace(substring(trim(price) from '[\d\s]+'), ' ', '')::FLOAT
+            END as price,
+        case when price_sqm like '%лв%' then round(substring(price_sqm from '[\d\.]+')::float / 1.9588, 2)
+            WHEN trim(price) = 'при запитване' THEN 0.
+            ELSE substring(price_sqm from '[\d\.]+')::FLOAT 
+            END as price_sqm,
+        substring(area from '[\d]+')::bigint as area,
+        CASE WHEN LOWER(TRIM(floor)) IN ('партер', 'сутерен') then 1 ELSE substring(floor from '[\d]+')::bigint END as floor,
+        description, 
+        views::bigint, 
+        date,
+        measurement_day
+    FROM holmes_import
+    """
+
+    engine.execute('DROP TABLE IF EXISTS holmes_import_casted')
+    engine.execute(sal.text(cast_query))
+
+    #INGESTING
+
+    ingest_query = """
+    INSERT INTO holmes (link, title, address, details, place, lon, lat, id, price, price_sqm, area, floor, description, views, date, measurement_day)
+    SELECT * FROM holmes_import_casted
+    """
+    engine.execute(ingest_query)
 
 
 def get_agency(page):
@@ -224,4 +284,5 @@ def crawlLinks(links, nbbhds, current_date):
 
 if __name__ == '__main__':
 	current_date = str(datetime.now().date())
-	gather_new_articles(current_date)
+	df = gather_new_articles(current_date)
+    send_to_rds(df)
