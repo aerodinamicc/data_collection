@@ -1,0 +1,6 @@
+{
+    "prefix": "s3://",
+    "bucket": "real-estate-scrapping",
+	"path": "/processed/",
+    "database": "real_estate_db"
+}
