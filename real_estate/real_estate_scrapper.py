@@ -47,7 +47,7 @@ def get_new_offers(site):
 
 
 def save_file(is_run_locally, sites):
-    start = time.time()
+    df = pd.DataFrame()
 
     for site in sites:
         print('\n' + site)
@@ -56,7 +56,6 @@ def save_file(is_run_locally, sites):
         # not UTC but EET
         now = datetime.now()
         now_date = str(now.date())
-        #now_date = '2020-08-17'
         file_name = site + '_' + now_date + '.tsv'
 
         offers = get_new_offers(site)
@@ -71,25 +70,83 @@ def save_file(is_run_locally, sites):
                 offers[col] = None
 
         offers = offers[COLUMNS]
+        df = pd.concat([df, offers])
 
-        #import pdb; pdb.set_trace()
-        if not is_run_locally:
-    
-            csv_buffer = StringIO()
-            offers.to_csv(csv_buffer, sep='\t', encoding='utf-16', index=False)
-            print('\n' + site + ' has ' + str(offers.shape[0]) + ' offers.\n')
-            logging.debug(site + ' has ' + str(offers.shape[0]) + ' offers.\n')
-            session = boto3.session.Session(profile_name='aero')
+    return df
 
-            s3 = session.resource('s3')
-            s3.Object(DESTINATION_BUCKET, 'raw/' + site + '/' + now_date + '/' + file_name).put(Body=csv_buffer.getvalue())
-        else:
-            if not os.path.exists('output'):
-                os.mkdir('output')
-            offers.to_csv('output/' + file_name, sep='\t', encoding='utf-16', index=False)
 
-    logging.debug('Processing took {} hours.'.format(str(timedelta(seconds=time.time() - start))))
-    print('Processing took {} hours'.format(str(timedelta(seconds=time.time() - start))))
+def send_to_rds(df):
+    with open('connection_rds.txt', 'r') as f:
+        DATABASE_URI = f.read()
+        engine = sal.create_engine(DATABASE_URI)
+
+    df['type'] = df['type'].map(str).apply(lambda x: x.lower().strip().replace('1-', 'едно').replace('2-', 'дву').replace('3-', 'три').replace('4-', 'четири').replace(' апартамент', ''))
+    df['is_apartment'] = df['type'].map(str).apply(lambda x: re.search('(?:стаен|мезонет|ателие)', x) is not None)
+    df['country'] = df['link'].map(str).apply(lambda x: 'fi' if 'etuovi.com' in x or 'www.vuokraovi.com' in x else 'bg')
+    df['place'] = df['place'].map(str).apply(lambda x: x.lower().strip().replace('гр. софия', '').replace('софийска област', '').replace('българия', '').replace('/', '').replace(',', '').replace('близо до', ''))
+    df['price'] = df['price'].map(str).apply(lambda x: re.search('([\d\.]{3,100})', x.replace(' ', '')).group(1) if re.search('([\d\.]{3,100})', x.replace(' ', '')) is not None else None)
+    df['area'] = df['area'].map(str).apply(lambda x: re.search('([\d\.]{3,100})', x.replace(' ', '')).group(1) if re.search('([\d\.]{3,100})', x.replace(' ', '')) is not None else None)
+    df['year'] = df['year'].map(str).apply(lambda x: re.search('([\d]{4})', x.replace(' ', '')).group(1) if re.search('([\d]{4})', x.replace(' ', '')) is not None else None)
+    df['lon'] = df['lon'].map(str).apply(lambda x: x.replace(',', '.'))
+    df['lat'] = df['lat'].map(str).apply(lambda x: x.replace(',', '.'))
+
+    engine.execute('DELETE FROM daily_import')
+
+    #IMPORTING
+    conn_raw = engine.raw_connection()
+    cur = conn_raw.cursor()
+    table_columns = pd.read_sql("select * from daily_import limit 5", engine).columns
+
+    conn = engine.raw_connection()
+    cur = conn.cursor()
+    output = io.StringIO()
+    df.to_csv(df, sep='\t', header=False, index=False)
+    output.seek(0)
+    contents = output.getvalue()
+    cur.copy_from(output, 'daily_import', null="")
+    conn.commit()
+
+    #CASTING
+    casted_query = """
+    CREATE TABLE daily_import_casted AS (
+    SELECT
+        id,
+        is_for_sale::boolean,
+        price::float,
+        labels,
+        views::float,
+        measurement_day,
+        link,country,type,city,place,
+        is_apartment::boolean,
+        area::float,
+        details,
+        year::float,
+        available_from,
+        lon::float,
+        lat::float
+    FROM daily_import
+    )
+    """
+
+    engine.execute('DROP TABLE IF EXISTS daily_import_casted')
+    engine.execute(sal.text(casted_query))
+
+    #INGESTING
+
+    ingest_metadata = """
+    INSERT INTO daily_metadata (link, country, id, type, is_apartment, city, place, area, details, year, available_from, lon, lat)
+    SELECT DISTINCT link, country, id, type, is_apartment, city, place, area, details, year, available_from, lon, lat
+    FROM daily_import_casted
+    ON CONFLICT DO NOTHING
+    """
+
+    ingest_measurements = """
+    INSERT INTO daily_measurements (id, is_for_sale, price, labels, views, measurement_day)
+    SELECT id, is_for_sale, price, labels, views, measurement_day FROM daily_import_casted
+    """
+
+    engine.execute(ingest_metadata)
+    engine.execute(ingest_measurements)
 
 
 if __name__ == '__main__':
@@ -99,6 +156,7 @@ if __name__ == '__main__':
     parsed = parser.parse_args()
     is_run_locally = bool(parsed.is_run_locally)
     sites = [s.strip() for s in parsed.sites.split(',')]
-    save_file(is_run_locally, sites)
+    df = save_file(is_run_locally, sites)
+    send_to_rds(df)
 
 
