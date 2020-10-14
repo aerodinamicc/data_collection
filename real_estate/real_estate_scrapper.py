@@ -85,7 +85,7 @@ def send_to_rds(df):
     df['country'] = df['link'].map(str).apply(lambda x: 'fi' if 'etuovi.com' in x or 'www.vuokraovi.com' in x else 'bg')
     df['place'] = df['place'].map(str).apply(lambda x: x.lower().strip().replace('гр. софия', '').replace('софийска област', '').replace('българия', '').replace('/', '').replace(',', '').replace('близо до', ''))
     df['price'] = df['price'].map(str).apply(lambda x: re.search('([\d\.]{3,100})', x.replace(' ', '')).group(1) if re.search('([\d\.]{3,100})', x.replace(' ', '')) is not None else None)
-    df['area'] = df['area'].map(str).apply(lambda x: re.search('([\d\.]{3,100})', x.replace(' ', '')).group(1) if re.search('([\d\.]{3,100})', x.replace(' ', '')) is not None else None)
+    df['area'] = df['area'].map(str).apply(lambda x: re.search('([\d\.]{2,100})', x.replace(' ', '')).group(1) if re.search('([\d\.]{2,100})', x.replace(' ', '')) is not None else None)
     df = df[df['country'] = 'bg']
     df['site'] = df['link'].apply(lambda x: re.search('.*://([^/]*)', x).group(1) if re.search('.*://([^/]*)', x) is not None else None)
     df['year'] = df['year'].map(str).apply(lambda x: re.search('([\d]{4})', x.replace(' ', '')).group(1) if re.search('([\d]{4})', x.replace(' ', '')) is not None else None)
@@ -135,15 +135,21 @@ def send_to_rds(df):
     #INGESTING
     ingest_metadata = """
     INSERT INTO daily_metadata (link, site, country, id, type, is_apartment, city, place, area, details, year, available_from, lon, lat)
-    SELECT DISTINCT link, site, country, id, type, is_apartment, city, place, area, details, year, available_from, lon, lat
+    SELECT 
+                       DISTINCT link, site, country, id, type, is_apartment, city, place, area, details, year, available_from, lon, lat
     FROM daily_import_casted
     ON CONFLICT (link) DO NOTHING
     """
 
     ingest_measurements = """
     INSERT INTO daily_measurements (site, id, is_for_sale, price, labels, views, measurement_day)
-    SELECT site, id, is_for_sale, price, labels, views, measurement_day FROM daily_import_casted
+    SELECT 
+                                    site, id, is_for_sale, price, labels, views, measurement_day 
+    FROM daily_import_casted
     """
+
+    engine.execute(ingest_metadata)
+    engine.execute(ingest_measurements)
 
 
 if __name__ == '__main__':
