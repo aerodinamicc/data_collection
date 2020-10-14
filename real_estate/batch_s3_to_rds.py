@@ -43,6 +43,7 @@ df = aws.fetch_from_s3(s3_client, s3_object, _BUCKET, _PATH)
 df['type'] = df['type'].map(str).apply(lambda x: x.lower().strip().replace('1-', 'едно').replace('2-', 'дву').replace('3-', 'три').replace('4-', 'четири').replace(' апартамент', ''))
 df['is_apartment'] = df['type'].map(str).apply(lambda x: re.search('(?:стаен|мезонет|ателие)', x) is not None)
 df['country'] = df['link'].map(str).apply(lambda x: 'fi' if 'etuovi.com' in x or 'www.vuokraovi.com' in x else 'bg')
+df['site'] = df['link'].apply(lambda x: re.search('.*://([^/]*)', x).group(1) if re.search('.*://([^/]*)', x) is not None else None)
 df['place'] = df['place'].map(str).apply(lambda x: x.lower().strip().replace('гр. софия', '').replace('софийска област', '').replace('българия', '').replace('/', '').replace(',', '').replace('близо до', ''))
 df['price'] = df['price'].map(str).apply(lambda x: re.search('([\d\.]{3,100})', x.replace(' ', '')).group(1) if re.search('([\d\.]{3,100})', x.replace(' ', '')) is not None else None)
 df['area'] = df['area'].map(str).apply(lambda x: re.search('([\d\.]{3,100})', x.replace(' ', '')).group(1) if re.search('([\d\.]{3,100})', x.replace(' ', '')) is not None else None)
@@ -52,33 +53,6 @@ df['lat'] = df['lat'].map(str).apply(lambda x: x.replace(',', '.'))
 
 engine.execute('DELETE FROM daily_import')
 
-#CREATE IMPORT TABLES
-
-import_creation = """
-CREATE TABLE if not exists daily_import (
-	link VARCHAR,
-	is_for_sale VARCHAR,
-	price VARCHAR,
-	labels VARCHAR, 
-	views VARCHAR,
-	measurement_day VARCHAR,
-	country VARCHAR,
-	id VARCHAR PRIMARY KEY,
-	type VARCHAR,
-	city VARCHAR,
-	place VARCHAR,
-	is_apartment VARCHAR,
-	area VARCHAR,
-	details VARCHAR,
-	year VARCHAR,
-	available_from VARCHAR,
-	lon VARCHAR,
-	lat VARCHAR
-);
-"""
-
-engine.execute(import_creation)
-
 #CHOPING AND SENDING FILES OVER
 conn_raw = engine.raw_connection()
 cur = conn_raw.cursor()
@@ -87,6 +61,7 @@ table_columns = pd.read_sql("select * from daily_import limit 5", engine).column
 def send_to_rds(df, cur, conn_raw, table, split_start, split_end):
 	output = io.StringIO()
 	temp = df[split_start:split_end][table_columns]
+	temp = temp[temp['country'] == 'bg']
 	print('Remaining: ' + str(df.shape[0] - split_end))
 	#import pdb;pdb.set_trace()
 	temp.to_csv(output, sep='\t', header=False, index=False)
@@ -116,6 +91,7 @@ casted_query = """
 CREATE TABLE daily_import_casted AS (
 SELECT
 	id,
+	site,
 	is_for_sale::boolean,
 	price::float,
 	labels,
@@ -139,16 +115,15 @@ engine.execute(sal.text(casted_query))
 #INGESTING
 
 ingest_metadata = """
-INSERT INTO daily_metadata (link, country, id, type, is_apartment, city, place, area, details, year, available_from, lon, lat)
-SELECT DISTINCT link, country, id, type, is_apartment, city, place, area, details, year, available_from, lon, lat
+INSERT INTO daily_metadata (link, site, country, id, type, is_apartment, city, place, area, details, year, available_from, lon, lat)
+SELECT DISTINCT link, site, country, id, type, is_apartment, city, place, area, details, year, available_from, lon, lat
 FROM daily_import_casted
 ON CONFLICT (link) DO NOTHING
 """
 
 ingest_measurements = """
-INSERT INTO daily_measurements (id, is_for_sale, price, labels, views, measurement_day)
-SELECT id, is_for_sale, price, labels, views, measurement_day FROM daily_import_casted
-ON CONFLICT DO NOTHING
+INSERT INTO daily_measurements (site, id, is_for_sale, price, labels, views, measurement_day)
+SELECT site, id, is_for_sale, price, labels, views, measurement_day FROM daily_import_casted
 """
 
 engine.execute(ingest_metadata)
