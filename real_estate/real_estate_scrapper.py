@@ -86,6 +86,8 @@ def send_to_rds(df):
     df['place'] = df['place'].map(str).apply(lambda x: x.lower().strip().replace('гр. софия', '').replace('софийска област', '').replace('българия', '').replace('/', '').replace(',', '').replace('близо до', ''))
     df['price'] = df['price'].map(str).apply(lambda x: re.search('([\d\.]{3,100})', x.replace(' ', '')).group(1) if re.search('([\d\.]{3,100})', x.replace(' ', '')) is not None else None)
     df['area'] = df['area'].map(str).apply(lambda x: re.search('([\d\.]{3,100})', x.replace(' ', '')).group(1) if re.search('([\d\.]{3,100})', x.replace(' ', '')) is not None else None)
+    df = df[df['country'] = 'bg']
+    df['site'] = df['link'].apply(lambda x: re.search('.*://([^/]*)', x).group(1) if re.search('.*://([^/]*)', x) is not None else None)
     df['year'] = df['year'].map(str).apply(lambda x: re.search('([\d]{4})', x.replace(' ', '')).group(1) if re.search('([\d]{4})', x.replace(' ', '')) is not None else None)
     df['lon'] = df['lon'].map(str).apply(lambda x: x.replace(',', '.'))
     df['lat'] = df['lat'].map(str).apply(lambda x: x.replace(',', '.'))
@@ -95,8 +97,6 @@ def send_to_rds(df):
     #IMPORTING
     conn_raw = engine.raw_connection()
     cur = conn_raw.cursor()
-    table_columns = pd.read_sql("select * from daily_import limit 5", engine).columns
-
     conn = engine.raw_connection()
     cur = conn.cursor()
     output = io.StringIO()
@@ -107,10 +107,13 @@ def send_to_rds(df):
     conn.commit()
 
     #CASTING
+
+    engine.execute('DROP TABLE IF EXISTS daily_import_casted')
     casted_query = """
     CREATE TABLE daily_import_casted AS (
     SELECT
         id,
+        site,
         is_for_sale::boolean,
         price::float,
         labels,
@@ -127,32 +130,26 @@ def send_to_rds(df):
     FROM daily_import
     )
     """
-
-    engine.execute('DROP TABLE IF EXISTS daily_import_casted')
     engine.execute(sal.text(casted_query))
 
     #INGESTING
-
     ingest_metadata = """
-    INSERT INTO daily_metadata (link, country, id, type, is_apartment, city, place, area, details, year, available_from, lon, lat)
-    SELECT DISTINCT link, country, id, type, is_apartment, city, place, area, details, year, available_from, lon, lat
+    INSERT INTO daily_metadata (link, site, country, id, type, is_apartment, city, place, area, details, year, available_from, lon, lat)
+    SELECT DISTINCT link, site, country, id, type, is_apartment, city, place, area, details, year, available_from, lon, lat
     FROM daily_import_casted
-    ON CONFLICT DO NOTHING
+    ON CONFLICT (link) DO NOTHING
     """
 
     ingest_measurements = """
-    INSERT INTO daily_measurements (id, is_for_sale, price, labels, views, measurement_day)
-    SELECT id, is_for_sale, price, labels, views, measurement_day FROM daily_import_casted
+    INSERT INTO daily_measurements (site, id, is_for_sale, price, labels, views, measurement_day)
+    SELECT site, id, is_for_sale, price, labels, views, measurement_day FROM daily_import_casted
     """
-
-    engine.execute(ingest_metadata)
-    engine.execute(ingest_measurements)
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-is_run_locally', required=False, help="MMDD", default=False)
-    parser.add_argument('-sites', required=False, help="site1, site2", default="address, arco, holmes, imoteka, superimoti, vuokraovi, etuovi, yavlena")
+    parser.add_argument('-sites', required=False, help="site1, site2", default="address, arco, holmes, imoteka, superimoti, yavlena")
     parsed = parser.parse_args()
     is_run_locally = bool(parsed.is_run_locally)
     sites = [s.strip() for s in parsed.sites.split(',')]
