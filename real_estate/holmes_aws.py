@@ -115,6 +115,8 @@ def send_to_rds(dd):
     types = {}
     for col in d.columns:
         types[col] = sal.types.String()
+
+    engine.execute('DELETE FROM holmes_import')
     
     conn_raw = engine.raw_connection()
     cur = conn_raw.cursor()
@@ -122,11 +124,10 @@ def send_to_rds(dd):
     d.to_csv(output, sep='\t', header=False, index=False)
     output.seek(0)
     contents = output.getvalue()
-    cur.copy_from(output, 'holmes_import', null="") # null values become ''
+    cur.copy_from(output, 'holmes_import', null="")
     conn_raw.commit()
 
     #CLEANING
-
     cast_query = """
     CREATE TABLE holmes_import_casted AS
     SELECT 
