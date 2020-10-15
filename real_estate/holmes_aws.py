@@ -5,8 +5,10 @@ import bs4
 import boto3
 import requests
 import pandas as pd
+import sqlalchemy as sal
 import re
 import os
+import io
 from tqdm import tqdm
 from io import StringIO
 import json
@@ -96,11 +98,12 @@ def gather_new_articles(current_date):
     #import pdb; pdb.set_trace()
     offers = crawlLinks(links, nbbhds, current_date)
     offers = offers[['link', 'title', 'address', 'details', 'neighbourhood', 'lon', 'lat', 'id', 'price', 'price_sqm', 'area', 'floor', 'description', 'views', 'date', 'agency', 'poly']]	
+    offers['measurement_day'] = current_date
 
     return offers
 
 
-def send_to_rds(dd):
+def send_to_rds(d):
     with open('connection_rds.txt', 'r') as f:
         DATABASE_URI = f.read()
         engine = sal.create_engine(DATABASE_URI)
@@ -110,7 +113,6 @@ def send_to_rds(dd):
     d['views'] = d['views'].apply(lambda x: str(x).replace('пъти', ''))
     d.rename(columns={"neighbourhood":'place'}, inplace=True)
     d.drop(columns=['poly', 'agency'], inplace=True)
-    d['measurement_day'] = date
 
     types = {}
     for col in d.columns:
@@ -286,4 +288,4 @@ def crawlLinks(links, nbbhds, current_date):
 if __name__ == '__main__':
 	current_date = str(datetime.now().date())
 	df = gather_new_articles(current_date)
-    send_to_rds(df)
+	send_to_rds(df)
