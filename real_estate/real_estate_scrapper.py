@@ -2,7 +2,10 @@ import argparse
 import os
 import boto3
 from datetime import datetime, timedelta
-from io import StringIO
+import io
+import re
+import sqlalchemy as sal
+import pandas as pd
 import time
 import logging
 import address_daily
@@ -86,13 +89,16 @@ def send_to_rds(df):
     df['place'] = df['place'].map(str).apply(lambda x: x.lower().strip().replace('гр. софия', '').replace('софийска област', '').replace('българия', '').replace('/', '').replace(',', '').replace('близо до', ''))
     df['price'] = df['price'].map(str).apply(lambda x: re.search('([\d\.]{3,100})', x.replace(' ', '')).group(1) if re.search('([\d\.]{3,100})', x.replace(' ', '')) is not None else None)
     df['area'] = df['area'].map(str).apply(lambda x: re.search('([\d\.]{2,100})', x.replace(' ', '')).group(1) if re.search('([\d\.]{2,100})', x.replace(' ', '')) is not None else None)
-    df = df[df['country'] = 'bg']
+    df = df[df['country'] == 'bg']
     df['site'] = df['link'].apply(lambda x: re.search('.*://([^/]*)', x).group(1) if re.search('.*://([^/]*)', x) is not None else None)
     df['year'] = df['year'].map(str).apply(lambda x: re.search('([\d]{4})', x.replace(' ', '')).group(1) if re.search('([\d]{4})', x.replace(' ', '')) is not None else None)
-    df['lon'] = df['lon'].map(str).apply(lambda x: x.replace(',', '.'))
-    df['lat'] = df['lat'].map(str).apply(lambda x: x.replace(',', '.'))
+    df['lon'] = df['lon'].map(str).apply(lambda x: x.replace(',', '.') if x != 'None' else '')
+    df['lat'] = df['lat'].map(str).apply(lambda x: x.replace(',', '.') if x != 'None' else '')
 
     engine.execute('DELETE FROM daily_import')
+
+    query_columns = "select * from daily_import "
+    columns = pd.read_sql(query_columns, engine).columns
 
     #IMPORTING
     conn_raw = engine.raw_connection()
@@ -100,7 +106,7 @@ def send_to_rds(df):
     conn = engine.raw_connection()
     cur = conn.cursor()
     output = io.StringIO()
-    df.to_csv(df, sep='\t', header=False, index=False)
+    df[columns].to_csv(output, sep='\t', header=False, index=False)
     output.seek(0)
     contents = output.getvalue()
     cur.copy_from(output, 'daily_import', null="")
@@ -155,7 +161,7 @@ def send_to_rds(df):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-is_run_locally', required=False, help="MMDD", default=False)
-    parser.add_argument('-sites', required=False, help="site1, site2", default="address, arco, holmes, imoteka, superimoti, yavlena")
+    parser.add_argument('-sites', required=False, help="site1, site2", default="address, arco, holmes, imoteka, superimoti")
     parsed = parser.parse_args()
     is_run_locally = bool(parsed.is_run_locally)
     sites = [s.strip() for s in parsed.sites.split(',')]
