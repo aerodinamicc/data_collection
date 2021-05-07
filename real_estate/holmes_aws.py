@@ -124,7 +124,7 @@ def send_to_rds(d):
     conn_raw = engine.raw_connection()
     cur = conn_raw.cursor()
     output = io.StringIO()
-    d.to_csv('150221_holmes.csv', index=False)
+    #d.to_csv('290321_holmes.csv', index=False)
     d.to_csv(output, sep='\t', header=False, index=False)
     output.seek(0)
     contents = output.getvalue()

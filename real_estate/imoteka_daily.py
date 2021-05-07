@@ -71,7 +71,7 @@ def crawlLinks(type_of_offering, page_count):
                     price = price.replace('EUR', '').replace(' ', '')
                     currency = 'EUR'
                 elif 'BGN' in price:
-                    price = str(round(float(price.replace('BGN', '').replace(' ', '')) / 1.9558))
+                    price = str(round(float(price.replace('BGN', '').replace(' ', '').replace('Цена:\n', '')) / 1.9558))
                     currency = 'EUR'
 
                 typ = b.findAll('span', attrs={'class':re.compile('truncate-label')})[0].text

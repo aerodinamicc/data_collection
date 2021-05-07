@@ -3,76 +3,100 @@ import os
 import requests
 import pandas as pd
 import re
+import time
 from tqdm import tqdm
 from datetime import datetime
 from helpers import clean_text
+from selenium import webdriver
+from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.chrome.options import Options
 
 
-search_url = 'https://address.bg/bg/продажба/резултати-от-търсене.html?page={}&city=101&etype=4&etype=3&etype=5&etype=6&etype=15&etype=2&etype=10&etype=12&etype=17&etype=18&pricefrom=&priceto=&areafrom=&areato=&sortBy=1&offerno=&region=1062&region=1063&region=1064&region=1065&region=1066&region=1067&region=1068&region=1069&region=1070&region=1071&region=1072&region=1074&region=1077&region=1078&region=1079&region=1080&region=1081&region=1082&region=1083&region=1084&region=1085&region=1086&region=1087&region=1088&region=1089&region=1090&region=1091&region=1092&region=1093&region=1094&region=1095&region=1096&region=1097&region=1098&region=1099&region=1100&region=1101&region=1102&region=1103&region=1104&region=1105&region=1106&region=1107&region=1108&region=1109&region=1110&region=1111&region=1112&region=1113&region=1114&region=1115&region=1116&region=1117&region=1118&region=1119&region=1120&region=1121&region=1122&region=1123&region=1124&region=1125&region=1126&region=1127&region=1128&region=1129&region=1130&region=1131&region=1132&region=1133&region=1134&region=1135&region=1136&region=1137&region=1138&region=1139&region=1140&region=1141&region=1142&region=1143&region=1144&region=1145&region=1146&region=1147&region=1148&region=1149&region=1150&region=1151&region=1152&region=1153&region=1154&region=1155&region=1156&region=1157&region=1158&region=1159&region=1160&region=1161&region=1162&region=1163&region=1164&region=1165&region=1166&region=1167&region=1168&region=1169&region=1170&region=1171&region=1172&region=1173&region=1174&region=1175&region=1176&region=1177&region=1178&region=1179&region=1180&region=1182&region=1183&region=1184&region=1185&region=1186&region=1189&region=1224&region=1225&region=1226&region=1227&region=1228&region=1229&region=1230&region=1231&region=1232&region=1233&region=1234&region=1235&region=1236&region=1290&region=1291&region=1308&region=1319&region=1320&region=1321&region=1322&region=1323&region=1324&region=1325&region=1326&region=1327&region=1328&region=1424&region=1425&region=1426&region=1525&region=1623&region=1659&region=1680&region=1681&region=1682&region=1683&region=1687&floorfrom=&floorto='
+base_url = 'https://address.bg/'
+search_url = "https://address.bg/{}/sofia/l4451?page={}"
 offers_file = "address_"
 
 def get_page_count(page):
-    max_page = max([int(re.search('([\d]+)', a.text).group(1)) for a in page.find('div', attrs={'class': 'pagination'}).findAll('a') if re.search('[\d]+', a.text) is not None])
-    x = page.find('div', attrs={'class': 'pagination'}).findAll('a')
-    #import pdb; pdb.set_trace() 
-
+    max_page = max([int(re.search('([\d]+)', a.text).group(1)) for a in page.findAll('a', attrs={'class':'page-link'}) if re.search('([\d]+)', a.text) is not None])
     return max_page
 
 
 def gather_new_articles():
-    resp_sale = requests.get(search_url.format('1'))
-    page_sale = bs4.BeautifulSoup(resp_sale.text, features='html.parser')
+    options = Options()
+    options.headless = True
+    options.add_argument('log-level=3')
+    #options.add_argument('--no-sandbox')
+    browser = webdriver.Chrome(ChromeDriverManager().install(), chrome_options=options)
+    browser.get(search_url.format('sale', '1'))    
+    time.sleep(5)
+    page_sale = bs4.BeautifulSoup(browser.page_source, features='html.parser')
     page_count_sale = get_page_count(page_sale)
-    
-    offers = crawlLinks(page_count_sale)
-    offers['is_for_sale'] = True
+
+    browser.get(search_url.format('rent', '1'))
+    time.sleep(5)
+    page_rent = bs4.BeautifulSoup(browser.page_source, features='html.parser')   
+    page_count_rent = get_page_count(page_rent)
+
+    offers_sale = crawlLinks('sale', page_count_sale)
+    offers_rent = crawlLinks('rent', page_count_rent)       
+    offers_sale['is_for_sale'] = True
+    offers_rent['is_for_sale']= False
+    offers = pd.concat([offers_rent, offers_sale], ignore_index=True)
+    browser.close()
+
+    offers.to_csv('address.bg_3004.csv', index=False, sep='\t')
 
     return offers
 
 
-def crawlLinks(page_count):
+def crawlLinks(type_of_offering, page_count):
     offers = pd.DataFrame()
+    options = Options()
+    options.headless = True
+    options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.116 Safari/537.36")
+    options.add_argument('log-level=3')
+    #options.add_argument('--no-sandbox')
+    browser = webdriver.Chrome(ChromeDriverManager().install(), options=options)
 
     for page_n in tqdm(range(1, page_count + 1)):
-        resp = requests.get(search_url.format(str(page_n)))
-        page = bs4.BeautifulSoup(resp.text, features='html.parser')
-        boxes = page.findAll('div', attrs={'class': 'property_holder'})
-
+        browser.get(search_url.format(type_of_offering, str(page_n)))
+        time.sleep(3)
+        page = bs4.BeautifulSoup(browser.page_source, features='html.parser', from_encoding="windows-1252")
+        boxes = page.findAll('div', attrs={'class': 'offer-card'})
+        #import pdb; pdb.set_trace()
         for b in boxes:
             try:
-                id = b.findAll('input', attrs={'id': 'estateId'})[0]['value']
+                b = b.select('.content')[0]
+                link = b.a['href']
+                id = re.search('([\d]+$)', link).group(1)
+                meta = b.findAll('div', attrs={'class': 'row'})
+                nbhd =  meta[0].findAll('small', attrs={'class': 'gray-m'})[0].text.replace('София, ', '') \
+                            if len(meta[0].findAll('small', attrs={'class': 'gray-m'})) > 0 else ''
+                area = meta[0].findAll('small', attrs={'class': 'gray-d'})[0].text.replace(' кв.м.', '') \
+                            if len(meta[0].findAll('small', attrs={'class': 'gray-m'})) > 0 else '0'
+                price = b.findAll('small', attrs={'class': 'price'})[0].text.replace('\t', '').replace('\n', '').replace(' ', '') \
+                            if len(b.findAll('small', attrs={'class': 'price'})) else '0'
+                typ = meta[1].findAll('small')[1].text \
+                            if len(meta) > 0 and len(meta[1].findAll('small')) > 1 else ''
+                labels = b.findAll('div', attrs={'class': 'building'})[0].text if len(b.findAll('div', attrs={'class': 'building'})) > 0 else ''
 
-                link = clean_text(b.findAll('a', attrs={'class': 'detail'})[0]['href'])
-                link =  re.search('^(.*)\?', link).group(1) if re.search('^(.*)\?', link) is not None else ''
-                city =  b.findAll('input', attrs={'id': 'cityName'})[0]['value']
-                nbhd =  b.findAll('input', attrs={'id': 'quarterName'})[0]['value']
-                typ = b.findAll('img', attrs={'class': 'estate_image'})[0]['alt']
-                labels = ', '.join([l['alt'] for l in b.findAll('div', attrs={'class': 'estate-labels'})[0].findAll('img')])
-                desc = b.findAll('div', attrs={'class': 'description'})[0].text
-                broker_info = b.findAll('div', attrs={'class': 'broker-info'})[0].text
+                data = {'link': link,
+                        'id': id,
+                        'type': typ,
+                        'labels': labels,
+                        'place': nbhd,
+                        'price': price,
+                        'area': area}
 
-                price = b.findAll('input', attrs={'id': 'formattedPrice'})[0]['value']
-                if 'EUR' in price:
-                    price = price.replace('EUR', '').replace(' ', '')
-                    currency = 'EUR'
-                elif 'BGN' in price:
-                    price = str(round(float(price.replace('BGN', '').replace(' ', '')) / 1.9558))
-                    currency = 'EUR'
-                
-                offers = offers.append({'link': clean_text(link),
-                                        'id': id,
-                                        'type': clean_text(typ),
-                                        'labels': clean_text(labels),
-                                        'city': clean_text(city),
-                                        'place': clean_text(nbhd),
-                                        'price': clean_text(price),
-                                        'currency': clean_text(currency),
-                                        'broker_info': clean_text(broker_info),
-                                        'description': clean_text(desc)}, ignore_index=True)
+                offers = offers.append(data, ignore_index=True)
+
+                #print(data)
 
             except Exception as e:
                 print(e)
                 continue
+        
+    browser.close()
 
     return offers
 
