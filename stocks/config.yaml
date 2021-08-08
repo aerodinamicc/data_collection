@@ -1,0 +1,28 @@
+# dataset
+sp500_dataset: "C:/Users/shadow/Desktop/sp500_com.csv"
+symbol_column: "symbol"
+sector_column: "sector"
+
+# Specify database details
+db_host: localhost
+db_port: 5432
+db_name: stocks
+db_user: postgres
+db_pass: admin
+
+# DB schame
+db_schema: "db_schema.sql"
+
+companies_table: sp500_companies
+price_actions_table: price_actions
+
+# List of columns of interest from the accidents data
+list_of_ordered_columns :
+- symbol
+- at_date
+- volume
+- at_open
+- at_close
+- at_close_adj
+- high
+- low
