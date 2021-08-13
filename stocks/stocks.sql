@@ -84,3 +84,30 @@ from fin;
 select * 
 from ticker_stats 
 where sector = 'Consumer Cyclical'
+
+
+with src as (
+select 
+	sc.sector,
+	date_trunc('month', at_date) as at_date,
+	--To_char(at_date, 'IYYY-IW') as at_date,
+	sum(pa.volume) as sum_volume
+from price_actions pa
+left join (select *, details->>'sector' as sector from sp500_companies) sc using(symbol)
+group by 1, 2
+),
+share_ as (
+select 
+	*,
+	round((sum_volume / sum(sum_volume) over (partition by at_date)) * 100, 2) as percent_from_all_volume,
+	sum(sum_volume) over (partition by at_date) as volume_that_day
+from src
+)
+select 
+	sector, at_date, sum_volume, percent_from_all_volume, 
+	percent_from_all_volume - lag(percent_from_all_volume) over (partition by sector order by at_date) as delta_perc_from_all_volume
+from share_
+where date_part('year', at_date) = 2021
+--where left(at_date, 4) = '2021'
+and sector is not null
+order by 2, 1
