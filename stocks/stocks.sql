@@ -85,6 +85,9 @@ select *
 from ticker_stats 
 where sector = 'Consumer Cyclical'
 
+------
+-- share of total volume per sector per month
+------ 
 
 with src as (
 select 
